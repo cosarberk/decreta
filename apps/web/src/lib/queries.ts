@@ -195,8 +195,12 @@ export const api = {
     return apiRequest<PublicUser>(`/users/${id}/role`, { method: 'PATCH', body: { role } });
   },
 
-  updateUser(id: string, fullName: string): Promise<PublicUser> {
-    return apiRequest<PublicUser>(`/users/${id}`, { method: 'PATCH', body: { fullName } });
+  updateUser(id: string, fullName: string, email: string): Promise<PublicUser> {
+    return apiRequest<PublicUser>(`/users/${id}`, { method: 'PATCH', body: { fullName, email } });
+  },
+
+  setUserPassword(id: string, newPassword: string): Promise<void> {
+    return apiRequest<void>(`/users/${id}/password`, { method: 'POST', body: { newPassword } });
   },
 
   deleteUser(id: string): Promise<void> {

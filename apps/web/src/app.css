@@ -1077,6 +1077,19 @@ a.topbar-user:hover {
   flex-shrink: 0;
   background: var(--ink-faint);
 }
+.filter-search {
+  padding: 5px 9px;
+  font-size: 13px;
+  margin-bottom: 4px;
+}
+.filter-scroll {
+  max-height: 210px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-right: 2px;
+}
 
 /* Ortalanan tek-sütun form kabı (yeni kayıt vb.) */
 .form-wrap {

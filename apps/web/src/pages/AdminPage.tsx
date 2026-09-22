@@ -2,8 +2,9 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, type MailStreamEvent } from '../lib/queries';
 import { ApiError } from '../lib/api';
-import type { Role } from '../lib/types';
+import type { PublicUser, Role } from '../lib/types';
 import { LabelChip } from '../components/atoms';
+import { UserDrawer } from '../components/UserDrawer';
 import { useConfirm } from '../components/ConfirmProvider';
 import { useI18n } from '../i18n/I18nContext';
 import { formatDate } from '../lib/format';
@@ -141,19 +142,8 @@ function UsersTab(): JSX.Element {
   };
 
   const confirm = useConfirm();
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
+  const [drawerUser, setDrawerUser] = useState<PublicUser | null>(null);
 
-  const updateNameMutation = useMutation({
-    mutationFn: (input: { id: string; fullName: string }) =>
-      api.updateUser(input.id, input.fullName),
-    onSuccess: () => {
-      setEditId(null);
-      setError(null);
-      invalidate();
-    },
-    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.actionError')),
-  });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.deleteUser(id),
     onSuccess: invalidate,
@@ -309,18 +299,7 @@ function UsersTab(): JSX.Element {
                     aria-label={user.full_name}
                   />
                 </td>
-                <td>
-                  {editId === user.id ? (
-                    <input
-                      className="input"
-                      style={{ padding: '4px 8px' }}
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                    />
-                  ) : (
-                    user.full_name
-                  )}
-                </td>
+                <td>{user.full_name}</td>
                 <td className="muted">{user.email}</td>
                 <td>
                   <select
@@ -342,47 +321,16 @@ function UsersTab(): JSX.Element {
                 </td>
                 <td style={{ textAlign: 'right' }}>
                   <div className="row-actions">
-                    {editId === user.id ? (
-                      <>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-primary"
-                          onClick={() => updateNameMutation.mutate({ id: user.id, fullName: editName })}
-                        >
-                          {t('common.save')}
-                        </button>
-                        <button type="button" className="btn btn-sm" onClick={() => setEditId(null)}>
-                          {t('common.cancel')}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className="btn btn-sm"
-                          onClick={() => {
-                            setEditId(user.id);
-                            setEditName(user.full_name);
-                          }}
-                        >
-                          {t('common.edit')}
-                        </button>
-                        <button
-                          type="button"
-                          className={`btn btn-sm${user.is_active ? ' btn-danger' : ''}`}
-                          onClick={() => activeMutation.mutate({ id: user.id, isActive: !user.is_active })}
-                        >
-                          {user.is_active ? t('admin.deactivate') : t('admin.activate')}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-danger"
-                          onClick={() => askDelete(user.id, user.full_name)}
-                        >
-                          {t('common.delete')}
-                        </button>
-                      </>
-                    )}
+                    <button type="button" className="btn btn-sm" onClick={() => setDrawerUser(user)}>
+                      {t('common.edit')}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-danger"
+                      onClick={() => askDelete(user.id, user.full_name)}
+                    >
+                      {t('common.delete')}
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -390,6 +338,12 @@ function UsersTab(): JSX.Element {
           </tbody>
         </table>
       </div>
+
+      <UserDrawer
+        key={drawerUser?.id}
+        user={drawerUser}
+        onClose={() => setDrawerUser(null)}
+      />
     </div>
   );
 }

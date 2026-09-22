@@ -65,6 +65,28 @@ export const usersService = {
     return user;
   },
 
+  /** Admin: isim + e-postayı günceller (e-posta çakışması 409). */
+  async adminUpdate(id: string, fullName: string, email: string): Promise<PublicUser> {
+    const trimmedName = fullName.trim();
+    const trimmedEmail = email.trim().toLowerCase();
+    if (trimmedName.length === 0) throw AppError.badRequest('İsim soyisim zorunlu');
+    const dup = await usersRepository.findByEmail(trimmedEmail);
+    if (dup && dup.id !== id) {
+      throw AppError.conflict('Bu e-posta başka bir kullanıcıda', 'EMAIL_TAKEN');
+    }
+    const user = await usersRepository.updateProfile(id, trimmedName, trimmedEmail);
+    if (!user) throw AppError.notFound('Kullanıcı bulunamadı');
+    return user;
+  },
+
+  /** Admin: kullanıcının parolasını doğrudan belirler (mail sunucusu olmayanlar için). */
+  async adminSetPassword(id: string, newPassword: string): Promise<void> {
+    const user = await usersRepository.findById(id);
+    if (!user) throw AppError.notFound('Kullanıcı bulunamadı');
+    const hash = await this.hashPassword(newPassword);
+    await usersRepository.updatePassword(id, hash);
+  },
+
   /**
    * Kullanıcıyı siler. Kayıt açmış kullanıcılar (iz bütünlüğü için) ve son admin
    * silinemez; bunun yerine pasifleştirilmeleri önerilir.

@@ -50,6 +50,16 @@ export const usersRepository = {
     return rows[0] ?? null;
   },
 
+  /** Admin: isim + e-postayı birlikte günceller. */
+  async updateProfile(id: string, fullName: string, email: string): Promise<PublicUser | null> {
+    const rows = await query<PublicUser>(
+      `UPDATE users SET full_name = $2, email = $3, updated_at = now()
+       WHERE id = $1 RETURNING ${PUBLIC_COLUMNS}`,
+      [id, fullName, email],
+    );
+    return rows[0] ?? null;
+  },
+
   async updatePassword(id: string, passwordHash: string): Promise<void> {
     await query('UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1', [
       id,

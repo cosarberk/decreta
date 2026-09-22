@@ -27,6 +27,8 @@ export function RecordsPage(): JSX.Element {
   const [filters, setFilters] = useState<RecordFilters>(initialFilters);
   const [searchText, setSearchText] = useState('');
   const [selectedPerson, setSelectedPerson] = useState<PickerItem | null>(null);
+  const [labelFilter, setLabelFilter] = useState('');
+  const [moduleFilter, setModuleFilter] = useState('');
 
   // Arama kutusunu debounce ederek filtreye yansıt.
   useEffect(() => {
@@ -147,49 +149,76 @@ export function RecordsPage(): JSX.Element {
 
           <div className="filter-group">
             <span className="filter-group-title">{t('records.labels')}</span>
-            {(labelsQuery.data ?? []).length === 0 && (
+            {(labelsQuery.data ?? []).length === 0 ? (
               <span className="muted" style={{ fontSize: 12 }}>
                 {t('records.noLabels')}
               </span>
+            ) : (
+              <>
+                <input
+                  className="input filter-search"
+                  placeholder={t('records.filterSearch')}
+                  value={labelFilter}
+                  onChange={(e) => setLabelFilter(e.target.value)}
+                />
+                <div className="filter-scroll">
+                  {(labelsQuery.data ?? [])
+                    .filter((label) =>
+                      label.name.toLocaleLowerCase('tr').includes(labelFilter.toLocaleLowerCase('tr')),
+                    )
+                    .map((label) => {
+                      const selected = filters.labels.includes(label.id);
+                      return (
+                        <label key={label.id} className={`filter-chip-row${selected ? ' selected' : ''}`}>
+                          <input type="checkbox" checked={selected} onChange={() => toggleLabel(label.id)} />
+                          <span
+                            className="filter-chip-dot"
+                            style={label.color ? { background: label.color } : undefined}
+                          />
+                          <span className="filter-chip-label" title={label.description || label.name}>
+                            {label.name}
+                          </span>
+                          <span className="count">{label.usage_count}</span>
+                        </label>
+                      );
+                    })}
+                </div>
+              </>
             )}
-            {(labelsQuery.data ?? []).map((label) => {
-              const selected = filters.labels.includes(label.id);
-              return (
-                <label key={label.id} className={`filter-chip-row${selected ? ' selected' : ''}`}>
-                  <input type="checkbox" checked={selected} onChange={() => toggleLabel(label.id)} />
-                  <span
-                    className="filter-chip-dot"
-                    style={label.color ? { background: label.color } : undefined}
-                  />
-                  <span className="filter-chip-label" title={label.description || label.name}>
-                    {label.name}
-                  </span>
-                  <span className="count">{label.usage_count}</span>
-                </label>
-              );
-            })}
           </div>
 
           {(modulesQuery.data ?? []).length > 0 && (
             <div className="filter-group">
               <span className="filter-group-title">{t('records.modules')}</span>
-              {(modulesQuery.data ?? []).map((module) => {
-                const selected = filters.modules.includes(module.id);
-                return (
-                  <label key={module.id} className={`filter-chip-row${selected ? ' selected' : ''}`}>
-                    <input
-                      type="checkbox"
-                      checked={selected}
-                      onChange={() => toggleModule(module.id)}
-                    />
-                    <span className="filter-chip-dot" />
-                    <span className="filter-chip-label" title={module.description || module.name}>
-                      {module.name}
-                    </span>
-                    <span className="count">{module.usage_count}</span>
-                  </label>
-                );
-              })}
+              <input
+                className="input filter-search"
+                placeholder={t('records.filterSearch')}
+                value={moduleFilter}
+                onChange={(e) => setModuleFilter(e.target.value)}
+              />
+              <div className="filter-scroll">
+                {(modulesQuery.data ?? [])
+                  .filter((module) =>
+                    module.name.toLocaleLowerCase('tr').includes(moduleFilter.toLocaleLowerCase('tr')),
+                  )
+                  .map((module) => {
+                    const selected = filters.modules.includes(module.id);
+                    return (
+                      <label key={module.id} className={`filter-chip-row${selected ? ' selected' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleModule(module.id)}
+                        />
+                        <span className="filter-chip-dot" />
+                        <span className="filter-chip-label" title={module.description || module.name}>
+                          {module.name}
+                        </span>
+                        <span className="count">{module.usage_count}</span>
+                      </label>
+                    );
+                  })}
+              </div>
             </div>
           )}
 
