@@ -76,6 +76,17 @@
 .topbar-user-role {
   font-size: 11px;
 }
+a.topbar-user {
+  text-decoration: none;
+  color: inherit;
+  padding: 4px 8px;
+  border-radius: var(--r);
+  transition: background 0.12s ease;
+}
+a.topbar-user:hover {
+  background: var(--surface-3);
+  text-decoration: none;
+}
 .topbar-controls {
   display: flex;
   align-items: center;
@@ -358,6 +369,26 @@
   background: var(--danger-soft);
   border: 1px solid color-mix(in srgb, var(--danger) 30%, var(--surface));
   border-radius: var(--r);
+}
+.form-ok {
+  padding: 9px 12px;
+  font-size: 13px;
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 10%, var(--surface));
+  border: 1px solid color-mix(in srgb, var(--ok) 35%, var(--surface));
+  border-radius: var(--r);
+}
+
+/* --- Profil sayfası ------------------------------------------------------ */
+.profile-wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+.profile-wrap .form-card {
+  max-width: none;
 }
 
 /* --- Form (yeni kayıt) --------------------------------------------------- */

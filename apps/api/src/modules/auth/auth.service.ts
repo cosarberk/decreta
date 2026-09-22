@@ -34,6 +34,33 @@ export const authService = {
     return user;
   },
 
+  /** Kullanıcının kendi isim soyismini günceller. */
+  async updateProfile(userId: string, fullName: string): Promise<PublicUser> {
+    const trimmed = fullName.trim();
+    if (trimmed.length === 0) {
+      throw AppError.badRequest('İsim soyisim boş olamaz');
+    }
+    const user = await usersRepository.updateFullName(userId, trimmed);
+    if (!user) throw AppError.notFound('Kullanıcı bulunamadı');
+    return user;
+  },
+
+  /** Mevcut parolayı doğrulayıp yenisini ayarlar. */
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const row = await usersRepository.findRowById(userId);
+    if (!row) throw AppError.notFound('Kullanıcı bulunamadı');
+    const ok = await usersService.verifyPassword(currentPassword, row.password_hash);
+    if (!ok) {
+      throw AppError.badRequest('Mevcut parola hatalı', 'WRONG_PASSWORD');
+    }
+    const hash = await usersService.hashPassword(newPassword);
+    await usersRepository.updatePassword(userId, hash);
+  },
+
   /**
    * Yapılandırmada tanımlıysa ve sistemde hiç aktif admin yoksa ilk yönetici
    * hesabını oluşturur. İlk kurulumda sisteme giriş yapılabilmesini sağlar.

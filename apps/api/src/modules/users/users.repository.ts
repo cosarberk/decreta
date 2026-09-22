@@ -35,6 +35,28 @@ export const usersRepository = {
     return rows[0] ?? null;
   },
 
+  /** Parola özeti dahil ham satır (kimlik/parola doğrulaması için). */
+  async findRowById(id: string): Promise<UserRow | null> {
+    const rows = await query<UserRow>('SELECT * FROM users WHERE id = $1 LIMIT 1', [id]);
+    return rows[0] ?? null;
+  },
+
+  async updateFullName(id: string, fullName: string): Promise<PublicUser | null> {
+    const rows = await query<PublicUser>(
+      `UPDATE users SET full_name = $2, updated_at = now()
+       WHERE id = $1 RETURNING ${PUBLIC_COLUMNS}`,
+      [id, fullName],
+    );
+    return rows[0] ?? null;
+  },
+
+  async updatePassword(id: string, passwordHash: string): Promise<void> {
+    await query('UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1', [
+      id,
+      passwordHash,
+    ]);
+  },
+
   async list(): Promise<PublicUser[]> {
     return query<PublicUser>(
       `SELECT ${PUBLIC_COLUMNS} FROM users ORDER BY created_at ASC`,

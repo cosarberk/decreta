@@ -40,12 +40,12 @@ export function Layout(): JSX.Element {
 
         <div className="topbar-right">
           <TopbarControls />
-          <div className="topbar-user">
+          <NavLink to="/profile" className="topbar-user" title={t('nav.profile')}>
             <span className="topbar-user-name">{user?.fullName}</span>
             <span className="topbar-user-role muted">
               {user?.role === 'admin' ? t('nav.roleAdmin') : t('nav.roleUser')}
             </span>
-          </div>
+          </NavLink>
           <button type="button" className="btn btn-ghost btn-sm" onClick={handleLogout}>
             {t('nav.logout')}
           </button>

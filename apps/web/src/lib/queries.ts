@@ -107,6 +107,17 @@ export const api = {
     return rows.map((row) => ({ id: row.id, fullName: row.full_name }));
   },
 
+  updateProfile(fullName: string): Promise<PublicUser> {
+    return apiRequest<PublicUser>('/auth/me', { method: 'PATCH', body: { fullName } });
+  },
+
+  changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    return apiRequest<void>('/auth/me/password', {
+      method: 'POST',
+      body: { currentPassword, newPassword },
+    });
+  },
+
   listUsers(): Promise<PublicUser[]> {
     return apiRequest<PublicUser[]>('/users');
   },

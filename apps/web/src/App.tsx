@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import { RecordsPage } from './pages/RecordsPage';
 import { RecordDetailPage } from './pages/RecordDetailPage';
 import { NewRecordPage } from './pages/NewRecordPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { AdminPage } from './pages/AdminPage';
 
 export function App(): JSX.Element {
@@ -34,6 +35,7 @@ export function App(): JSX.Element {
         <Route index element={<RecordsPage />} />
         <Route path="records/new" element={<NewRecordPage />} />
         <Route path="records/:id" element={<RecordDetailPage />} />
+        <Route path="profile" element={<ProfilePage />} />
         <Route
           path="admin"
           element={
