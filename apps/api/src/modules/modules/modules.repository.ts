@@ -38,6 +38,31 @@ export const modulesRepository = {
     return rows[0]!;
   },
 
+  async findById(id: string): Promise<ModuleRow | null> {
+    const rows = await query<ModuleRow>('SELECT * FROM modules WHERE id = $1 LIMIT 1', [id]);
+    return rows[0] ?? null;
+  },
+
+  async update(id: string, name: string): Promise<ModuleRow | null> {
+    const rows = await query<ModuleRow>('UPDATE modules SET name = $2 WHERE id = $1 RETURNING *', [
+      id,
+      name,
+    ]);
+    return rows[0] ?? null;
+  },
+
+  async countUsage(id: string): Promise<number> {
+    const rows = await query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM record_modules WHERE module_id = $1',
+      [id],
+    );
+    return Number(rows[0]?.count ?? 0);
+  },
+
+  async remove(id: string): Promise<void> {
+    await query('DELETE FROM modules WHERE id = $1', [id]);
+  },
+
   async findOrCreate(client: pg.PoolClient, name: string): Promise<string> {
     const trimmed = name.trim();
     const insert = await client.query<{ id: string }>(

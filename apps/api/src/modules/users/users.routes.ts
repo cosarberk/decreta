@@ -1,11 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 import { usersService } from './users.service.js';
+import { activityService } from '../activity/index.js';
+import { z } from 'zod';
 import {
   createUserSchema,
   setActiveSchema,
   setRoleSchema,
   userIdParamsSchema,
 } from './users.schema.js';
+
+const updateUserSchema = z.object({ fullName: z.string().trim().min(1, 'İsim soyisim zorunlu') });
 
 /**
  * Kullanıcı yönetimi rotaları — tamamı yönetici yetkisi ister.
@@ -19,18 +23,65 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
   app.post('/users', { preHandler: app.requireAdmin }, async (request, reply) => {
     const input = createUserSchema.parse(request.body);
     const user = await usersService.create(input);
+    void activityService.log({
+      action: 'user_created',
+      actorId: request.user.sub,
+      actorName: request.user.fullName,
+      targetRef: user.full_name,
+      targetText: user.email,
+    });
     return reply.code(201).send(user);
+  });
+
+  app.patch('/users/:id', { preHandler: app.requireAdmin }, async (request) => {
+    const { id } = userIdParamsSchema.parse(request.params);
+    const { fullName } = updateUserSchema.parse(request.body);
+    const user = await usersService.updateName(id, fullName);
+    void activityService.log({
+      action: 'user_updated',
+      actorId: request.user.sub,
+      actorName: request.user.fullName,
+      targetRef: user.full_name,
+    });
+    return user;
+  });
+
+  app.delete('/users/:id', { preHandler: app.requireAdmin }, async (request, reply) => {
+    const { id } = userIdParamsSchema.parse(request.params);
+    const user = await usersService.remove(id);
+    void activityService.log({
+      action: 'user_deleted',
+      actorId: request.user.sub,
+      actorName: request.user.fullName,
+      targetRef: user.full_name,
+    });
+    return reply.code(204).send();
   });
 
   app.patch('/users/:id/active', { preHandler: app.requireAdmin }, async (request) => {
     const { id } = userIdParamsSchema.parse(request.params);
     const { isActive } = setActiveSchema.parse(request.body);
-    return usersService.setActive(id, isActive);
+    const user = await usersService.setActive(id, isActive);
+    void activityService.log({
+      action: isActive ? 'user_activated' : 'user_deactivated',
+      actorId: request.user.sub,
+      actorName: request.user.fullName,
+      targetRef: user.full_name,
+    });
+    return user;
   });
 
   app.patch('/users/:id/role', { preHandler: app.requireAdmin }, async (request) => {
     const { id } = userIdParamsSchema.parse(request.params);
     const { role } = setRoleSchema.parse(request.body);
-    return usersService.setRole(id, role);
+    const user = await usersService.setRole(id, role);
+    void activityService.log({
+      action: 'user_role_changed',
+      actorId: request.user.sub,
+      actorName: request.user.fullName,
+      targetRef: user.full_name,
+      targetText: role,
+    });
+    return user;
   });
 }

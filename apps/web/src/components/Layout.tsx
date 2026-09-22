@@ -31,6 +31,12 @@ export function Layout(): JSX.Element {
           <NavLink to="/records/new" className="nav-link">
             {t('nav.newRecord')}
           </NavLink>
+          <NavLink to="/activity" className="nav-link">
+            {t('nav.activity')}
+          </NavLink>
+          <NavLink to="/reports" className="nav-link">
+            {t('nav.reports')}
+          </NavLink>
           {user?.role === 'admin' && (
             <NavLink to="/admin" className="nav-link">
               {t('nav.admin')}

@@ -42,6 +42,31 @@ export const labelsRepository = {
     return rows[0]!;
   },
 
+  async findById(id: string): Promise<LabelRow | null> {
+    const rows = await query<LabelRow>('SELECT * FROM labels WHERE id = $1 LIMIT 1', [id]);
+    return rows[0] ?? null;
+  },
+
+  async update(id: string, name: string, color: string | null): Promise<LabelRow | null> {
+    const rows = await query<LabelRow>(
+      'UPDATE labels SET name = $2, color = $3 WHERE id = $1 RETURNING *',
+      [id, name, color],
+    );
+    return rows[0] ?? null;
+  },
+
+  async countUsage(id: string): Promise<number> {
+    const rows = await query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM record_labels WHERE label_id = $1',
+      [id],
+    );
+    return Number(rows[0]?.count ?? 0);
+  },
+
+  async remove(id: string): Promise<void> {
+    await query('DELETE FROM labels WHERE id = $1', [id]);
+  },
+
   /** İsimden etiket bulur, yoksa oluşturur (kayıt transaction'ı içinde). */
   async findOrCreate(client: pg.PoolClient, name: string): Promise<string> {
     const trimmed = name.trim();

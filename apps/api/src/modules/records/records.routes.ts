@@ -1,5 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { recordsService } from './records.service.js';
+import { activityService } from '../activity/index.js';
 import {
   addLinkSchema,
   createRecordSchema,
@@ -7,6 +8,8 @@ import {
   recordIdParamsSchema,
   searchRecordsSchema,
 } from './records.schema.js';
+
+const ref = (refNo: number): string => `DCR-${String(refNo).padStart(4, '0')}`;
 
 /** Kayıt rotaları: gelişmiş arama, görüntüleme, append-only oluşturma ve bağlantılar. */
 export async function recordsRoutes(app: FastifyInstance): Promise<void> {
@@ -42,19 +45,49 @@ export async function recordsRoutes(app: FastifyInstance): Promise<void> {
   app.post('/records', { preHandler: app.authenticate }, async (request, reply) => {
     const body = createRecordSchema.parse(request.body);
     const record = await recordsService.create(body, request.user.sub);
+    void activityService.log({
+      action: 'record_created',
+      actorId: request.user.sub,
+      actorName: request.user.fullName,
+      targetRef: ref(record.refNo),
+      targetText: record.decision.slice(0, 100),
+      recordId: record.id,
+    });
     return reply.code(201).send(record);
   });
 
   app.post('/records/:id/links', { preHandler: app.authenticate }, async (request, reply) => {
     const { id } = recordIdParamsSchema.parse(request.params);
     const link = addLinkSchema.parse(request.body);
-    const record = await recordsService.addLink(id, link, request.user.sub);
+    const record = await recordsService.addLink(id, link, {
+      id: request.user.sub,
+      fullName: request.user.fullName,
+    });
+    const added = record.links.find(
+      (l) => l.direction === 'out' && l.record.id === link.toRecordId && l.typeId === link.linkTypeId,
+    );
+    void activityService.log({
+      action: added?.isSupersede ? 'record_superseded' : 'link_added',
+      actorId: request.user.sub,
+      actorName: request.user.fullName,
+      targetRef: ref(record.refNo),
+      targetText: added ? `${added.typeLabel} → ${ref(added.record.refNo)}` : null,
+      recordId: record.id,
+    });
     return reply.code(201).send(record);
   });
 
   app.delete('/records/:id/links/:linkId', { preHandler: app.authenticate }, async (request, reply) => {
-    const { linkId } = linkParamsSchema.parse(request.params);
+    const { id, linkId } = linkParamsSchema.parse(request.params);
     await recordsService.removeLink(linkId);
+    const record = await recordsService.getById(id);
+    void activityService.log({
+      action: 'link_removed',
+      actorId: request.user.sub,
+      actorName: request.user.fullName,
+      targetRef: ref(record.refNo),
+      recordId: id,
+    });
     return reply.code(204).send();
   });
 }

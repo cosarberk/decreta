@@ -48,6 +48,32 @@ interface RequestOptions {
  * Merkezî fetch sarmalayıcı: JWT başlığını ekler, query'yi kurar, hataları
  * {@link ApiError}'a çevirir ve 401'de oturumu temizler.
  */
+/**
+ * Auth başlığıyla GET yapıp yanıtı düz metin (örn. CSV) olarak döndürür.
+ * Export/indirme akışları için.
+ */
+export async function apiGetText(
+  path: string,
+  query?: Record<string, string | number | undefined | null>,
+): Promise<string> {
+  const url = new URL(`${BASE_URL}${path}`, window.location.origin);
+  if (query) {
+    for (const [key, value] of Object.entries(query)) {
+      if (value === undefined || value === null || value === '') continue;
+      url.searchParams.set(key, String(value));
+    }
+  }
+  const headers: Record<string, string> = {};
+  const token = tokenStore.get();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(url.toString(), { headers });
+  if (!response.ok) {
+    if (response.status === 401) tokenStore.clear();
+    throw new ApiError(response.status, 'ERROR', 'Dışa aktarma başarısız');
+  }
+  return response.text();
+}
+
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = new URL(`${BASE_URL}${path}`, window.location.origin);
   if (options.query) {

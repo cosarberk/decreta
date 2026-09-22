@@ -36,6 +36,7 @@ export interface RecordLinkView {
   color: string | null;
   isSupersede: boolean;
   createdAt: string;
+  by: string;
   record: { id: string; refNo: number; decision: string };
 }
 
@@ -90,6 +91,51 @@ export interface LinkType {
   color: string | null;
   is_supersede: boolean;
   created_at: string;
+}
+
+export interface ActivityItem {
+  id: string;
+  action: string;
+  actor_name: string;
+  target_ref: string | null;
+  target_text: string | null;
+  record_id: string | null;
+  created_at: string;
+}
+
+export interface ActivitySearchResponse {
+  items: ActivityItem[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
+
+export interface CountRow {
+  label: string;
+  count: number;
+}
+export interface LabelCountRow extends CountRow {
+  color: string | null;
+}
+export interface ReportSummary {
+  total: number;
+  active: number;
+  superseded: number;
+  byAffect: CountRow[];
+  byModule: CountRow[];
+  byLabel: LabelCountRow[];
+  topDeciders: CountRow[];
+  topCreators: CountRow[];
+  byMonth: CountRow[];
+}
+
+export interface EmailTemplate {
+  key: string;
+  subject: string;
+  body_html: string;
+  updated_at: string;
+  variables: string[];
 }
 
 export interface PublicUser {

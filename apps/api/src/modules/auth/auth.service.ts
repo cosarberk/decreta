@@ -1,7 +1,17 @@
+import { createHash, randomBytes } from 'node:crypto';
 import { config } from '../../config/index.js';
 import { AppError } from '../../lib/index.js';
 import { usersRepository, usersService, type PublicUser } from '../users/index.js';
+import { resetRepository } from './reset.repository.js';
 import type { AuthUser } from '../../types/fastify.js';
+
+/** Ham token'ın DB'de saklanan SHA-256 özeti. */
+function hashToken(raw: string): string {
+  return createHash('sha256').update(raw).digest('hex');
+}
+
+/** Parola sıfırlama token'ının geçerlilik süresi (saat). */
+const RESET_TTL_HOURS = 24;
 
 export const authService = {
   /**
@@ -59,6 +69,29 @@ export const authService = {
     }
     const hash = await usersService.hashPassword(newPassword);
     await usersRepository.updatePassword(userId, hash);
+  },
+
+  /**
+   * Bir kullanıcı için tek kullanımlık parola sıfırlama token'ı üretir.
+   * DB'de yalnızca özeti tutulur; ham token e-posta linkinde kullanılmak üzere
+   * döndürülür.
+   */
+  async createResetToken(userId: string): Promise<string> {
+    const raw = randomBytes(32).toString('hex');
+    const expiresAt = new Date(Date.now() + RESET_TTL_HOURS * 3600_000);
+    await resetRepository.create(userId, hashToken(raw), expiresAt);
+    return raw;
+  },
+
+  /** Token'ı doğrulayıp yeni parolayı ayarlar; token'ı tek kullanımlık işaretler. */
+  async resetPassword(rawToken: string, newPassword: string): Promise<void> {
+    const record = await resetRepository.findValid(hashToken(rawToken));
+    if (!record) {
+      throw AppError.badRequest('Bağlantı geçersiz veya süresi dolmuş', 'INVALID_TOKEN');
+    }
+    const hash = await usersService.hashPassword(newPassword);
+    await usersRepository.updatePassword(record.user_id, hash);
+    await resetRepository.markUsed(record.id);
   },
 
   /**

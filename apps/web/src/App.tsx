@@ -4,10 +4,13 @@ import { useI18n } from './i18n/I18nContext';
 import { Layout } from './components/Layout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { LoginPage } from './pages/LoginPage';
+import { ResetPage } from './pages/ResetPage';
 import { RecordsPage } from './pages/RecordsPage';
 import { RecordDetailPage } from './pages/RecordDetailPage';
 import { NewRecordPage } from './pages/NewRecordPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ActivityPage } from './pages/ActivityPage';
+import { ReportsPage } from './pages/ReportsPage';
 import { AdminPage } from './pages/AdminPage';
 
 export function App(): JSX.Element {
@@ -25,6 +28,7 @@ export function App(): JSX.Element {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/reset" element={<ResetPage />} />
       <Route
         element={
           <ProtectedRoute>
@@ -35,6 +39,8 @@ export function App(): JSX.Element {
         <Route index element={<RecordsPage />} />
         <Route path="records/new" element={<NewRecordPage />} />
         <Route path="records/:id" element={<RecordDetailPage />} />
+        <Route path="activity" element={<ActivityPage />} />
+        <Route path="reports" element={<ReportsPage />} />
         <Route path="profile" element={<ProfilePage />} />
         <Route
           path="admin"

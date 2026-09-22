@@ -56,6 +56,34 @@ export const usersService = {
     return user;
   },
 
+  /** Admin bir kullanıcının adını günceller. */
+  async updateName(id: string, fullName: string): Promise<PublicUser> {
+    const trimmed = fullName.trim();
+    if (trimmed.length === 0) throw AppError.badRequest('İsim soyisim zorunlu');
+    const user = await usersRepository.updateFullName(id, trimmed);
+    if (!user) throw AppError.notFound('Kullanıcı bulunamadı');
+    return user;
+  },
+
+  /**
+   * Kullanıcıyı siler. Kayıt açmış kullanıcılar (iz bütünlüğü için) ve son admin
+   * silinemez; bunun yerine pasifleştirilmeleri önerilir.
+   */
+  async remove(id: string): Promise<PublicUser> {
+    const user = await usersRepository.findById(id);
+    if (!user) throw AppError.notFound('Kullanıcı bulunamadı');
+    await this.assertNotLastAdmin(id);
+    const authored = await usersRepository.countAuthoredRecords(id);
+    if (authored > 0) {
+      throw AppError.conflict(
+        `Bu kullanıcı ${authored} kayıt açmış; iz bütünlüğü için silinemez. Pasifleştirebilirsiniz.`,
+        'USER_HAS_RECORDS',
+      );
+    }
+    await usersRepository.remove(id);
+    return user;
+  },
+
   /**
    * Sistemde en az bir aktif admin kalmasını güvence altına alır; son admini
    * pasifleştirme/rol düşürme girişimini engeller.

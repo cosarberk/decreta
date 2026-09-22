@@ -30,3 +30,14 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 {{- define "decreta.postgresHost" -}}
 {{- printf "%s-postgres" (include "decreta.fullname" .) -}}
 {{- end -}}
+
+{{/* Public kök adres: config.PUBLIC_URL > ingress host > localhost */}}
+{{- define "decreta.publicUrl" -}}
+{{- if .Values.config.PUBLIC_URL -}}
+{{- .Values.config.PUBLIC_URL -}}
+{{- else if .Values.ingress.enabled -}}
+{{- printf "http%s://%s" (ternary "s" "" .Values.ingress.tls.enabled) .Values.ingress.host -}}
+{{- else -}}
+{{- printf "http://localhost:%v" .Values.service.port -}}
+{{- end -}}
+{{- end -}}

@@ -9,10 +9,14 @@ import { AppError } from './lib/index.js';
 import authPlugin from './plugins/auth.js';
 import { authRoutes } from './modules/auth/index.js';
 import { usersRoutes } from './modules/users/index.js';
+import { accountRoutes } from './modules/account/index.js';
 import { personsRoutes } from './modules/persons/index.js';
 import { labelsRoutes } from './modules/labels/index.js';
 import { modulesRoutes } from './modules/modules/index.js';
 import { linkTypesRoutes } from './modules/link-types/index.js';
+import { emailTemplatesRoutes } from './modules/email-templates/index.js';
+import { activityRoutes } from './modules/activity/index.js';
+import { reportsRoutes } from './modules/reports/index.js';
 import { recordsRoutes } from './modules/records/index.js';
 
 const currentDir = dirname(fileURLToPath(import.meta.url));
@@ -57,10 +61,14 @@ export async function buildApp(): Promise<FastifyInstance> {
       api.get('/health', async () => ({ status: 'ok' }));
       await api.register(authRoutes);
       await api.register(usersRoutes);
+      await api.register(accountRoutes);
       await api.register(personsRoutes);
       await api.register(labelsRoutes);
       await api.register(modulesRoutes);
       await api.register(linkTypesRoutes);
+      await api.register(emailTemplatesRoutes);
+      await api.register(activityRoutes);
+      await api.register(reportsRoutes);
       await api.register(recordsRoutes);
     },
     { prefix: '/api' },

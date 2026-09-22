@@ -200,10 +200,11 @@ function LinkRow({
   onOpen: () => void;
   onRemove: () => void;
 }): JSX.Element {
+  const { t } = useI18n();
   const color = link.color ?? undefined;
   return (
     <tr>
-      <td style={{ width: 120 }}>
+      <td style={{ width: 120, verticalAlign: 'top' }}>
         <span className="chip" style={color ? { color, borderColor: color } : undefined}>
           {link.typeLabel}
         </span>
@@ -212,9 +213,12 @@ function LinkRow({
         <button type="button" className="link-cell" onClick={onOpen}>
           <span className="ref-no">{formatRefNo(link.record.refNo)}</span> — {link.record.decision}
         </button>
+        <div className="muted" style={{ fontSize: 11, marginTop: 2 }}>
+          {t('common.linkedBy', { name: link.by })}
+        </div>
       </td>
-      <td style={{ width: 40, textAlign: 'right' }}>
-        <button type="button" className="btn btn-ghost btn-sm" onClick={onRemove} aria-label="Kaldır">
+      <td style={{ width: 40, textAlign: 'right', verticalAlign: 'top' }}>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={onRemove} aria-label={t('common.remove')}>
           ×
         </button>
       </td>

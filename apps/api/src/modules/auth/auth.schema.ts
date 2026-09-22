@@ -14,4 +14,9 @@ export const changePasswordSchema = z.object({
   newPassword: z.string().min(6, 'Yeni parola en az 6 karakter olmalı'),
 });
 
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1, 'Bağlantı geçersiz'),
+  newPassword: z.string().min(6, 'Yeni parola en az 6 karakter olmalı'),
+});
+
 export type LoginInput = z.infer<typeof loginSchema>;

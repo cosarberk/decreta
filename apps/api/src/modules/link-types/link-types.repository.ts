@@ -42,6 +42,18 @@ export const linkTypesRepository = {
     return rows[0]!;
   },
 
+  async update(
+    id: string,
+    input: { forwardName: string; inverseName: string; color: string | null; isSupersede: boolean },
+  ): Promise<LinkTypeRow | null> {
+    const rows = await query<LinkTypeRow>(
+      `UPDATE link_types SET forward_name = $2, inverse_name = $3, color = $4, is_supersede = $5
+       WHERE id = $1 RETURNING *`,
+      [id, input.forwardName, input.inverseName, input.color, input.isSupersede],
+    );
+    return rows[0] ?? null;
+  },
+
   async countUsage(id: string): Promise<number> {
     const rows = await query<{ count: string }>(
       'SELECT count(*)::text AS count FROM record_links WHERE link_type_id = $1',

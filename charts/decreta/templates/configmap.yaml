@@ -13,3 +13,8 @@ data:
   POSTGRES_DB: {{ .Values.postgres.database | quote }}
   BOOTSTRAP_ADMIN_EMAIL: {{ .Values.config.BOOTSTRAP_ADMIN_EMAIL | quote }}
   BOOTSTRAP_ADMIN_NAME: {{ .Values.config.BOOTSTRAP_ADMIN_NAME | quote }}
+  PUBLIC_URL: {{ include "decreta.publicUrl" . | quote }}
+  SMTP_HOST: {{ .Values.config.SMTP_HOST | quote }}
+  SMTP_PORT: {{ .Values.config.SMTP_PORT | quote }}
+  SMTP_SECURE: {{ .Values.config.SMTP_SECURE | quote }}
+  SMTP_FROM: {{ .Values.config.SMTP_FROM | quote }}

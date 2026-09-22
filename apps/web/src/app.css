@@ -655,6 +655,225 @@ a.topbar-user:hover {
 .data-table tr:last-child td {
   border-bottom: none;
 }
+.data-table input[type="checkbox"] {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.bulk-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+.bulk-result {
+  font-size: 13px;
+  color: var(--ok);
+}
+.bulk-hint {
+  font-size: 11px;
+  flex-basis: 100%;
+}
+
+/* --- Aktivite / log ------------------------------------------------------ */
+.activity-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.log-list {
+  padding: 2px 0;
+  overflow: hidden;
+}
+.log-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+}
+.log-row:last-child {
+  border-bottom: none;
+}
+.log-row.clickable {
+  cursor: pointer;
+}
+.log-row.clickable:hover {
+  background: var(--surface-3);
+}
+.log-time {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-faint);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.log-tag {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  padding: 1px 6px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.log-cat-create {
+  color: var(--ok);
+  background: color-mix(in srgb, var(--ok) 12%, var(--surface));
+}
+.log-cat-update {
+  color: var(--affect-analiz);
+  background: color-mix(in srgb, var(--affect-analiz) 12%, var(--surface));
+}
+.log-cat-delete {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+.log-cat-link {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.log-cat-supersede {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 16%, var(--surface));
+}
+.log-text {
+  color: var(--ink);
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.log-ref {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.log-detail {
+  color: var(--ink-faint);
+}
+
+/* --- Raporlar ------------------------------------------------------------ */
+.report-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.report-tile {
+  padding: 18px 20px;
+}
+.report-tile-value {
+  font-family: var(--font-serif);
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+}
+.report-tile-value.tone-ok {
+  color: var(--ok);
+}
+.report-tile-value.tone-danger {
+  color: var(--danger);
+}
+.report-tile-label {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.report-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+.report-section {
+  padding: 18px 20px;
+}
+.report-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--ink-soft);
+  margin-bottom: 14px;
+}
+.bar-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bar-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 40px;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+}
+.bar-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.bar-track {
+  height: 14px;
+  background: var(--surface-3);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  min-width: 2px;
+}
+.bar-count {
+  text-align: right;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.report-print-head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 16px;
+}
+
+/* --- Yazdırma / PDF ------------------------------------------------------ */
+.print-only {
+  display: none;
+}
+@media print {
+  .topbar,
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block;
+  }
+  .app-content {
+    max-width: none;
+    padding: 0;
+  }
+  body {
+    background: #fff;
+  }
+  .card {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+  .report-print-head {
+    padding-bottom: 12px;
+    border-bottom: 2px solid var(--accent);
+  }
+}
 .tabs {
   display: flex;
   gap: 4px;
@@ -761,6 +980,76 @@ a.topbar-user:hover {
   font-size: 13px;
 }
 
+/* --- Onay / genel modal -------------------------------------------------- */
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 42;
+  width: min(420px, 92vw);
+  padding: 22px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-2);
+}
+.modal-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+.modal-message {
+  font-size: 14px;
+  color: var(--ink-soft);
+  line-height: 1.5;
+  margin: 0 0 20px;
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+.modal .field {
+  margin-bottom: 14px;
+}
+
+/* Filtre satırında uzun etiket/modül adı: kısalt + tooltip (title) */
+.filter-chip-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+.filter-chip-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--ink-faint);
+}
+
+/* Ortalanan tek-sütun form kabı (yeni kayıt vb.) */
+.form-wrap {
+  max-width: 760px;
+  margin: 0 auto;
+}
+.form-wrap .form-card {
+  max-width: none;
+}
+
+/* Satır içi düzenleme (admin tabloları) */
+.row-actions {
+  display: inline-flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+.table-scroll {
+  overflow-x: auto;
+}
+
 /* --- Duyarlılık ---------------------------------------------------------- */
 @media (max-width: 880px) {
   .records-layout {
@@ -776,5 +1065,45 @@ a.topbar-user:hover {
   }
   .topbar-tagline {
     display: none;
+  }
+}
+
+@media (max-width: 620px) {
+  .app-content {
+    padding: 16px;
+  }
+  .topbar {
+    height: auto;
+    flex-wrap: wrap;
+    gap: 10px 16px;
+    padding: 10px 16px;
+  }
+  .topbar-nav {
+    order: 3;
+    width: 100%;
+    margin-left: 0;
+    overflow-x: auto;
+  }
+  .topbar-right {
+    gap: 8px;
+  }
+  .page-head {
+    flex-wrap: wrap;
+  }
+  .link-composer {
+    flex-wrap: wrap;
+  }
+  .link-composer > div {
+    flex-basis: 100%;
+  }
+  .bulk-toolbar {
+    gap: 8px;
+  }
+  .report-tiles,
+  .report-grid {
+    grid-template-columns: 1fr;
+  }
+  .bar-row {
+    grid-template-columns: 90px 1fr 34px;
   }
 }

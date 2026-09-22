@@ -63,6 +63,24 @@ export const usersRepository = {
     );
   },
 
+  /** Bildirim için aktif kullanıcıların e-postaları (isteğe bağlı biri hariç). */
+  async listActiveRecipients(excludeId?: string): Promise<{ id: string; email: string; full_name: string }[]> {
+    return query<{ id: string; email: string; full_name: string }>(
+      `SELECT id, email, full_name FROM users
+       WHERE is_active = true AND ($1::uuid IS NULL OR id <> $1)`,
+      [excludeId ?? null],
+    );
+  },
+
+  /** Verilen id listesindeki kullanıcıları döndürür (toplu e-posta işlemleri için). */
+  async listByIds(ids: readonly string[]): Promise<PublicUser[]> {
+    if (ids.length === 0) return [];
+    return query<PublicUser>(
+      `SELECT ${PUBLIC_COLUMNS} FROM users WHERE id = ANY($1) ORDER BY full_name`,
+      [ids],
+    );
+  },
+
   async create(input: {
     email: string;
     passwordHash: string;
@@ -101,5 +119,18 @@ export const usersRepository = {
       "SELECT count(*)::text AS count FROM users WHERE role = 'admin' AND is_active = true",
     );
     return Number(rows[0]?.count ?? 0);
+  },
+
+  /** Kullanıcının açtığı kayıt sayısı (silme engeli için). */
+  async countAuthoredRecords(id: string): Promise<number> {
+    const rows = await query<{ count: string }>(
+      'SELECT count(*)::text AS count FROM records WHERE created_by = $1',
+      [id],
+    );
+    return Number(rows[0]?.count ?? 0);
+  },
+
+  async remove(id: string): Promise<void> {
+    await query('DELETE FROM users WHERE id = $1', [id]);
   },
 };

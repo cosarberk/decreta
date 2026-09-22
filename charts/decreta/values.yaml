@@ -21,6 +21,9 @@ secrets:
   # yazarsan (min 6 karakter) ilk admin onunla oluşturulur. Not: ilk admin
   # yalnızca sistemde hiç admin yokken oluşturulur; sonradan değiştirmek DB'den yapılır.
   adminPassword: "decretaadmin123"
+  # SMTP kimlik bilgileri (opsiyonel). Doldurulmazsa e-posta devre dışı.
+  smtpUser: ""
+  smtpPass: ""
 
 # ── Gizli olmayan ayarlar ──────────────────────────────────
 config:
@@ -29,6 +32,14 @@ config:
   # İlk admin (bootstrap) e-postası ve görünen adı.
   BOOTSTRAP_ADMIN_EMAIL: admin@decreta.local
   BOOTSTRAP_ADMIN_NAME: "Sistem Yöneticisi"
+  # E-posta linklerinin kök adresi. Boş bırakılırsa https://<ingress.host>
+  # (ingress kapalıysa http://localhost:<service.port>) otomatik kullanılır.
+  PUBLIC_URL: ""
+  # ── SMTP (opsiyonel) — SMTP_HOST boşsa e-posta özelliği devre dışı ──
+  SMTP_HOST: ""
+  SMTP_PORT: "587"
+  SMTP_SECURE: "false"
+  SMTP_FROM: "Decreta <no-reply@decreta.local>"
 
 # ── Cluster içi Postgres ───────────────────────────────────
 postgres:

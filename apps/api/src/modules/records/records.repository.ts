@@ -30,6 +30,7 @@ export interface RecordLinkView {
   color: string | null;
   isSupersede: boolean;
   createdAt: string;
+  by: string;
   record: { id: string; refNo: number; decision: string };
 }
 
@@ -112,23 +113,25 @@ const LINKS_PROJECTION = `
       SELECT json_build_object(
         'id', rk.id, 'direction', 'out', 'typeId', lt.id,
         'typeLabel', lt.forward_name, 'color', lt.color, 'isSupersede', lt.is_supersede,
-        'createdAt', rk.created_at,
+        'createdAt', rk.created_at, 'by', bu.full_name,
         'record', json_build_object('id', t.id, 'refNo', t.ref_no::int, 'decision', t.decision)
       ) AS link
       FROM record_links rk
       JOIN link_types lt ON lt.id = rk.link_type_id
       JOIN records t ON t.id = rk.to_record
+      JOIN users bu ON bu.id = rk.created_by
       WHERE rk.from_record = r.id
       UNION ALL
       SELECT json_build_object(
         'id', rk.id, 'direction', 'in', 'typeId', lt.id,
         'typeLabel', lt.inverse_name, 'color', lt.color, 'isSupersede', lt.is_supersede,
-        'createdAt', rk.created_at,
+        'createdAt', rk.created_at, 'by', bu.full_name,
         'record', json_build_object('id', f.id, 'refNo', f.ref_no::int, 'decision', f.decision)
       ) AS link
       FROM record_links rk
       JOIN link_types lt ON lt.id = rk.link_type_id
       JOIN records f ON f.id = rk.from_record
+      JOIN users bu ON bu.id = rk.created_by
       WHERE rk.to_record = r.id
     ) links
   ), '[]') AS links

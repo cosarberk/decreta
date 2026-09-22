@@ -1,19 +1,21 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../lib/queries';
 import { ApiError } from '../lib/api';
 import type { Role } from '../lib/types';
 import { LabelChip } from '../components/atoms';
+import { useConfirm } from '../components/ConfirmProvider';
 import { useI18n } from '../i18n/I18nContext';
 import { formatDate } from '../lib/format';
 
-type Tab = 'users' | 'labels' | 'modules' | 'linkTypes';
+type Tab = 'users' | 'labels' | 'modules' | 'linkTypes' | 'emailTemplates';
 
 const TABS: { key: Tab; labelKey: string }[] = [
   { key: 'users', labelKey: 'admin.tabUsers' },
   { key: 'modules', labelKey: 'admin.tabModules' },
   { key: 'labels', labelKey: 'admin.tabLabels' },
   { key: 'linkTypes', labelKey: 'admin.tabLinkTypes' },
+  { key: 'emailTemplates', labelKey: 'admin.tabEmailTemplates' },
 ];
 
 export function AdminPage(): JSX.Element {
@@ -45,6 +47,7 @@ export function AdminPage(): JSX.Element {
       {tab === 'modules' && <ModulesTab />}
       {tab === 'labels' && <LabelsTab />}
       {tab === 'linkTypes' && <LinkTypesTab />}
+      {tab === 'emailTemplates' && <EmailTemplatesTab />}
     </>
   );
 }
@@ -82,6 +85,66 @@ function UsersTab(): JSX.Element {
     onSuccess: invalidate,
     onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.actionError')),
   });
+
+  const users = usersQuery.data ?? [];
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [mailMsg, setMailMsg] = useState<string | null>(null);
+
+  const toggle = (id: string): void => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+  const allSelected = users.length > 0 && users.every((u) => selected.has(u.id));
+  const toggleAll = (): void => {
+    setSelected(allSelected ? new Set() : new Set(users.map((u) => u.id)));
+  };
+
+  const infoMutation = useMutation({
+    mutationFn: () => api.sendUserInfo([...selected]),
+    onSuccess: (r) => setMailMsg(t('admin.sendResult', { sent: r.sent, failed: r.failed })),
+    onError: (err) => setMailMsg(err instanceof ApiError ? err.message : t('admin.actionError')),
+  });
+  const resetMutation = useMutation({
+    mutationFn: () => api.sendUserReset([...selected]),
+    onSuccess: (r) => setMailMsg(t('admin.sendResult', { sent: r.sent, failed: r.failed })),
+    onError: (err) => setMailMsg(err instanceof ApiError ? err.message : t('admin.actionError')),
+  });
+  const mailBusy = infoMutation.isPending || resetMutation.isPending;
+
+  const confirm = useConfirm();
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+
+  const updateNameMutation = useMutation({
+    mutationFn: (input: { id: string; fullName: string }) =>
+      api.updateUser(input.id, input.fullName),
+    onSuccess: () => {
+      setEditId(null);
+      setError(null);
+      invalidate();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.actionError')),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteUser(id),
+    onSuccess: invalidate,
+    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.actionError')),
+  });
+
+  const askDelete = async (id: string, name: string): Promise<void> => {
+    if (
+      await confirm({
+        message: t('common.deleteConfirm', { name }),
+        danger: true,
+        confirmLabel: t('common.delete'),
+      })
+    ) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   const handleCreate = (event: FormEvent): void => {
     event.preventDefault();
@@ -142,10 +205,46 @@ function UsersTab(): JSX.Element {
         </button>
       </form>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="bulk-toolbar">
+        <span className="muted">{t('admin.selected', { n: selected.size })}</span>
+        <button
+          type="button"
+          className="btn btn-sm"
+          disabled={selected.size === 0 || mailBusy}
+          onClick={() => {
+            setMailMsg(null);
+            infoMutation.mutate();
+          }}
+        >
+          {mailBusy ? t('admin.sending') : t('admin.sendInfo')}
+        </button>
+        <button
+          type="button"
+          className="btn btn-sm"
+          disabled={selected.size === 0 || mailBusy}
+          onClick={() => {
+            setMailMsg(null);
+            resetMutation.mutate();
+          }}
+        >
+          {mailBusy ? t('admin.sending') : t('admin.sendReset')}
+        </button>
+        {mailMsg && <span className="bulk-result">{mailMsg}</span>}
+        <span className="bulk-hint muted">{t('admin.smtpHint')}</span>
+      </div>
+
+      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
         <table className="data-table">
           <thead>
             <tr>
+              <th style={{ width: 36 }}>
+                <input
+                  type="checkbox"
+                  checked={allSelected}
+                  onChange={toggleAll}
+                  aria-label={t('admin.selectAll')}
+                />
+              </th>
               <th>{t('admin.fullName')}</th>
               <th>{t('admin.email')}</th>
               <th>{t('admin.role')}</th>
@@ -154,9 +253,28 @@ function UsersTab(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            {(usersQuery.data ?? []).map((user) => (
+            {users.map((user) => (
               <tr key={user.id}>
-                <td>{user.full_name}</td>
+                <td>
+                  <input
+                    type="checkbox"
+                    checked={selected.has(user.id)}
+                    onChange={() => toggle(user.id)}
+                    aria-label={user.full_name}
+                  />
+                </td>
+                <td>
+                  {editId === user.id ? (
+                    <input
+                      className="input"
+                      style={{ padding: '4px 8px' }}
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                    />
+                  ) : (
+                    user.full_name
+                  )}
+                </td>
                 <td className="muted">{user.email}</td>
                 <td>
                   <select
@@ -177,13 +295,49 @@ function UsersTab(): JSX.Element {
                   )}
                 </td>
                 <td style={{ textAlign: 'right' }}>
-                  <button
-                    type="button"
-                    className={`btn btn-sm${user.is_active ? ' btn-danger' : ''}`}
-                    onClick={() => activeMutation.mutate({ id: user.id, isActive: !user.is_active })}
-                  >
-                    {user.is_active ? t('admin.deactivate') : t('admin.activate')}
-                  </button>
+                  <div className="row-actions">
+                    {editId === user.id ? (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          onClick={() => updateNameMutation.mutate({ id: user.id, fullName: editName })}
+                        >
+                          {t('common.save')}
+                        </button>
+                        <button type="button" className="btn btn-sm" onClick={() => setEditId(null)}>
+                          {t('common.cancel')}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={() => {
+                            setEditId(user.id);
+                            setEditName(user.full_name);
+                          }}
+                        >
+                          {t('common.edit')}
+                        </button>
+                        <button
+                          type="button"
+                          className={`btn btn-sm${user.is_active ? ' btn-danger' : ''}`}
+                          onClick={() => activeMutation.mutate({ id: user.id, isActive: !user.is_active })}
+                        >
+                          {user.is_active ? t('admin.deactivate') : t('admin.activate')}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          onClick={() => askDelete(user.id, user.full_name)}
+                        >
+                          {t('common.delete')}
+                        </button>
+                      </>
+                    )}
+                  </div>
                 </td>
               </tr>
             ))}
@@ -211,6 +365,38 @@ function LabelsTab(): JSX.Element {
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.labelError')),
   });
+
+  const confirm = useConfirm();
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editColor, setEditColor] = useState('#33518f');
+  const invalidate = (): void => void queryClient.invalidateQueries({ queryKey: ['labels'] });
+  const updateMutation = useMutation({
+    mutationFn: (input: { id: string; name: string; color: string }) =>
+      api.updateLabel(input.id, input.name, input.color),
+    onSuccess: () => {
+      setEditId(null);
+      setError(null);
+      invalidate();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.labelError')),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteLabel(id),
+    onSuccess: invalidate,
+    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.labelError')),
+  });
+  const askDelete = async (id: string, label: string): Promise<void> => {
+    if (
+      await confirm({
+        message: t('common.deleteConfirm', { name: label }),
+        danger: true,
+        confirmLabel: t('common.delete'),
+      })
+    ) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   const handleCreate = (event: FormEvent): void => {
     event.preventDefault();
@@ -245,23 +431,82 @@ function LabelsTab(): JSX.Element {
         </div>
       </form>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
         <table className="data-table">
           <thead>
             <tr>
               <th>{t('admin.colLabel')}</th>
               <th>{t('admin.colUsage')}</th>
               <th>{t('admin.colCreated')}</th>
+              <th style={{ textAlign: 'right' }}>{t('admin.colAction')}</th>
             </tr>
           </thead>
           <tbody>
             {(labelsQuery.data ?? []).map((label) => (
               <tr key={label.id}>
                 <td>
-                  <LabelChip label={label} />
+                  {editId === label.id ? (
+                    <div className="row" style={{ gap: 8 }}>
+                      <input
+                        type="color"
+                        value={editColor}
+                        onChange={(e) => setEditColor(e.target.value)}
+                        style={{ width: 34, height: 30 }}
+                      />
+                      <input
+                        className="input"
+                        style={{ padding: '4px 8px', maxWidth: 200 }}
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                      />
+                    </div>
+                  ) : (
+                    <LabelChip label={label} />
+                  )}
                 </td>
                 <td className="muted">{t('admin.usageRecords', { n: label.usage_count })}</td>
                 <td className="muted">{formatDate(label.created_at)}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <div className="row-actions">
+                    {editId === label.id ? (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          onClick={() =>
+                            updateMutation.mutate({ id: label.id, name: editName, color: editColor })
+                          }
+                        >
+                          {t('common.save')}
+                        </button>
+                        <button type="button" className="btn btn-sm" onClick={() => setEditId(null)}>
+                          {t('common.cancel')}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={() => {
+                            setEditId(label.id);
+                            setEditName(label.name);
+                            setEditColor(label.color ?? '#33518f');
+                          }}
+                        >
+                          {t('common.edit')}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          onClick={() => askDelete(label.id, label.name)}
+                        >
+                          {t('common.delete')}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -287,6 +532,36 @@ function ModulesTab(): JSX.Element {
     },
     onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.moduleError')),
   });
+
+  const confirm = useConfirm();
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const invalidate = (): void => void queryClient.invalidateQueries({ queryKey: ['modules'] });
+  const updateMutation = useMutation({
+    mutationFn: (input: { id: string; name: string }) => api.updateModule(input.id, input.name),
+    onSuccess: () => {
+      setEditId(null);
+      setError(null);
+      invalidate();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.moduleError')),
+  });
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => api.deleteModule(id),
+    onSuccess: invalidate,
+    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.moduleError')),
+  });
+  const askDelete = async (id: string, label: string): Promise<void> => {
+    if (
+      await confirm({
+        message: t('common.deleteConfirm', { name: label }),
+        danger: true,
+        confirmLabel: t('common.delete'),
+      })
+    ) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   const handleCreate = (event: FormEvent): void => {
     event.preventDefault();
@@ -318,23 +593,71 @@ function ModulesTab(): JSX.Element {
         </span>
       </form>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
         <table className="data-table">
           <thead>
             <tr>
               <th>{t('admin.colModule')}</th>
               <th>{t('admin.colUsage')}</th>
               <th>{t('admin.colCreated')}</th>
+              <th style={{ textAlign: 'right' }}>{t('admin.colAction')}</th>
             </tr>
           </thead>
           <tbody>
             {(modulesQuery.data ?? []).map((module) => (
               <tr key={module.id}>
                 <td>
-                  <span className="chip">{module.name}</span>
+                  {editId === module.id ? (
+                    <input
+                      className="input"
+                      style={{ padding: '4px 8px', maxWidth: 220 }}
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                    />
+                  ) : (
+                    <span className="chip">{module.name}</span>
+                  )}
                 </td>
                 <td className="muted">{t('admin.usageRecords', { n: module.usage_count })}</td>
                 <td className="muted">{formatDate(module.created_at)}</td>
+                <td style={{ textAlign: 'right' }}>
+                  <div className="row-actions">
+                    {editId === module.id ? (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-primary"
+                          onClick={() => updateMutation.mutate({ id: module.id, name: editName })}
+                        >
+                          {t('common.save')}
+                        </button>
+                        <button type="button" className="btn btn-sm" onClick={() => setEditId(null)}>
+                          {t('common.cancel')}
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={() => {
+                            setEditId(module.id);
+                            setEditName(module.name);
+                          }}
+                        >
+                          {t('common.edit')}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-danger"
+                          onClick={() => askDelete(module.id, module.name)}
+                        >
+                          {t('common.delete')}
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -375,6 +698,35 @@ function LinkTypesTab(): JSX.Element {
     onSuccess: invalidate,
     onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.deleteError')),
   });
+
+  const confirm = useConfirm();
+  const [editId, setEditId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState({
+    forwardName: '',
+    inverseName: '',
+    color: '#33518f',
+    isSupersede: false,
+  });
+  const updateMutation = useMutation({
+    mutationFn: (id: string) => api.updateLinkType(id, editForm),
+    onSuccess: () => {
+      setEditId(null);
+      setError(null);
+      invalidate();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.linkTypeError')),
+  });
+  const askDelete = async (id: string, label: string): Promise<void> => {
+    if (
+      await confirm({
+        message: t('common.deleteConfirm', { name: label }),
+        danger: true,
+        confirmLabel: t('common.delete'),
+      })
+    ) {
+      deleteMutation.mutate(id);
+    }
+  };
 
   const handleCreate = (event: FormEvent): void => {
     event.preventDefault();
@@ -433,7 +785,7 @@ function LinkTypesTab(): JSX.Element {
         </div>
       </form>
 
-      <div className="card" style={{ padding: 0, overflow: 'hidden' }}>
+      <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
         <table className="data-table">
           <thead>
             <tr>
@@ -444,44 +796,212 @@ function LinkTypesTab(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            {(typesQuery.data ?? []).map((type) => (
-              <tr key={type.id}>
-                <td>
-                  <strong>{type.forward_name}</strong> <span className="muted">→ {type.inverse_name}</span>
-                </td>
-                <td>
-                  {type.is_supersede ? (
-                    <span className="badge-affect badge-superseded">{t('admin.badgeSupersede')}</span>
-                  ) : (
-                    <span className="muted">{t('common.none')}</span>
-                  )}
-                </td>
-                <td>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      width: 16,
-                      height: 16,
-                      borderRadius: 4,
-                      background: type.color ?? 'var(--line-strong)',
-                      border: '1px solid var(--line-strong)',
-                    }}
-                  />
-                </td>
-                <td style={{ textAlign: 'right' }}>
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-danger"
-                    onClick={() => deleteMutation.mutate(type.id)}
-                  >
-                    {t('admin.delete')}
-                  </button>
-                </td>
-              </tr>
-            ))}
+            {(typesQuery.data ?? []).map((type) => {
+              const editing = editId === type.id;
+              return (
+                <tr key={type.id}>
+                  <td>
+                    {editing ? (
+                      <div className="row" style={{ gap: 6 }}>
+                        <input
+                          className="input"
+                          style={{ padding: '4px 8px', maxWidth: 110 }}
+                          value={editForm.forwardName}
+                          onChange={(e) => setEditForm({ ...editForm, forwardName: e.target.value })}
+                        />
+                        <span className="muted">→</span>
+                        <input
+                          className="input"
+                          style={{ padding: '4px 8px', maxWidth: 110 }}
+                          value={editForm.inverseName}
+                          onChange={(e) => setEditForm({ ...editForm, inverseName: e.target.value })}
+                        />
+                      </div>
+                    ) : (
+                      <>
+                        <strong>{type.forward_name}</strong>{' '}
+                        <span className="muted">→ {type.inverse_name}</span>
+                      </>
+                    )}
+                  </td>
+                  <td>
+                    {editing ? (
+                      <input
+                        type="checkbox"
+                        checked={editForm.isSupersede}
+                        onChange={(e) => setEditForm({ ...editForm, isSupersede: e.target.checked })}
+                      />
+                    ) : type.is_supersede ? (
+                      <span className="badge-affect badge-superseded">{t('admin.badgeSupersede')}</span>
+                    ) : (
+                      <span className="muted">{t('common.none')}</span>
+                    )}
+                  </td>
+                  <td>
+                    {editing ? (
+                      <input
+                        type="color"
+                        value={editForm.color}
+                        onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
+                        style={{ width: 34, height: 30 }}
+                      />
+                    ) : (
+                      <span
+                        style={{
+                          display: 'inline-block',
+                          width: 16,
+                          height: 16,
+                          borderRadius: 4,
+                          background: type.color ?? 'var(--line-strong)',
+                          border: '1px solid var(--line-strong)',
+                        }}
+                      />
+                    )}
+                  </td>
+                  <td style={{ textAlign: 'right' }}>
+                    <div className="row-actions">
+                      {editing ? (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            onClick={() => updateMutation.mutate(type.id)}
+                          >
+                            {t('common.save')}
+                          </button>
+                          <button type="button" className="btn btn-sm" onClick={() => setEditId(null)}>
+                            {t('common.cancel')}
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            className="btn btn-sm"
+                            onClick={() => {
+                              setEditId(type.id);
+                              setEditForm({
+                                forwardName: type.forward_name,
+                                inverseName: type.inverse_name,
+                                color: type.color ?? '#33518f',
+                                isSupersede: type.is_supersede,
+                              });
+                            }}
+                          >
+                            {t('common.edit')}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-danger"
+                            onClick={() => askDelete(type.id, type.forward_name)}
+                          >
+                            {t('common.delete')}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+    </div>
+  );
+}
+
+function EmailTemplatesTab(): JSX.Element {
+  const { t } = useI18n();
+  const queryClient = useQueryClient();
+  const templatesQuery = useQuery({ queryKey: ['email-templates'], queryFn: api.listEmailTemplates });
+  const [drafts, setDrafts] = useState<Record<string, { subject: string; body: string }>>({});
+  const [msg, setMsg] = useState<{ key: string; ok: boolean; text: string } | null>(null);
+
+  useEffect(() => {
+    if (templatesQuery.data) {
+      setDrafts(
+        Object.fromEntries(
+          templatesQuery.data.map((tpl) => [tpl.key, { subject: tpl.subject, body: tpl.body_html }]),
+        ),
+      );
+    }
+  }, [templatesQuery.data]);
+
+  const saveMutation = useMutation({
+    mutationFn: (input: { key: string; subject: string; body: string }) =>
+      api.updateEmailTemplate(input.key, input.subject, input.body),
+    onSuccess: (_r, v) => {
+      setMsg({ key: v.key, ok: true, text: t('admin.tplSaved') });
+      void queryClient.invalidateQueries({ queryKey: ['email-templates'] });
+    },
+    onError: (err, v) =>
+      setMsg({ key: v.key, ok: false, text: err instanceof ApiError ? err.message : t('admin.tplError') }),
+  });
+
+  return (
+    <div className="stack" style={{ gap: 20 }}>
+      {(templatesQuery.data ?? []).map((tpl) => {
+        const draft = drafts[tpl.key] ?? { subject: tpl.subject, body: tpl.body_html };
+        return (
+          <form
+            className="card"
+            style={{ padding: 20 }}
+            key={tpl.key}
+            onSubmit={(e) => {
+              e.preventDefault();
+              setMsg(null);
+              saveMutation.mutate({ key: tpl.key, subject: draft.subject, body: draft.body });
+            }}
+          >
+            <div className="filter-group-title" style={{ marginBottom: 12 }}>
+              {t(`admin.tplName.${tpl.key}`)}
+            </div>
+            {msg?.key === tpl.key && (
+              <div className={msg.ok ? 'form-ok' : 'form-error'} style={{ marginBottom: 12 }}>
+                {msg.text}
+              </div>
+            )}
+            <div className="field" style={{ marginBottom: 14 }}>
+              <label>{t('admin.tplSubject')}</label>
+              <input
+                className="input"
+                value={draft.subject}
+                onChange={(e) =>
+                  setDrafts((d) => ({ ...d, [tpl.key]: { ...draft, subject: e.target.value } }))
+                }
+              />
+            </div>
+            <div className="field" style={{ marginBottom: 12 }}>
+              <label>{t('admin.tplBody')}</label>
+              <textarea
+                className="textarea"
+                style={{ minHeight: 150, fontFamily: 'var(--font-mono)', fontSize: 12 }}
+                value={draft.body}
+                onChange={(e) =>
+                  setDrafts((d) => ({ ...d, [tpl.key]: { ...draft, body: e.target.value } }))
+                }
+              />
+            </div>
+            <div style={{ marginBottom: 14 }}>
+              <span className="filter-group-title">{t('admin.tplVariables')}: </span>
+              {tpl.variables.map((v) => (
+                <span
+                  key={v}
+                  className="chip"
+                  style={{ marginRight: 6, fontFamily: 'var(--font-mono)' }}
+                >{`{{${v}}}`}</span>
+              ))}
+            </div>
+            <div className="row" style={{ justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <span className="hint">{t('admin.tplHint')}</span>
+              <button type="submit" className="btn btn-primary" disabled={saveMutation.isPending}>
+                {t('common.save')}
+              </button>
+            </div>
+          </form>
+        );
+      })}
     </div>
   );
 }

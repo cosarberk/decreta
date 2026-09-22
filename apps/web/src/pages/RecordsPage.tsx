@@ -157,7 +157,13 @@ export function RecordsPage(): JSX.Element {
               return (
                 <label key={label.id} className={`filter-chip-row${selected ? ' selected' : ''}`}>
                   <input type="checkbox" checked={selected} onChange={() => toggleLabel(label.id)} />
-                  <LabelChip label={label} />
+                  <span
+                    className="filter-chip-dot"
+                    style={label.color ? { background: label.color } : undefined}
+                  />
+                  <span className="filter-chip-label" title={label.name}>
+                    {label.name}
+                  </span>
                   <span className="count">{label.usage_count}</span>
                 </label>
               );
@@ -176,7 +182,10 @@ export function RecordsPage(): JSX.Element {
                       checked={selected}
                       onChange={() => toggleModule(module.id)}
                     />
-                    <span className="chip">{module.name}</span>
+                    <span className="filter-chip-dot" />
+                    <span className="filter-chip-label" title={module.name}>
+                      {module.name}
+                    </span>
                     <span className="count">{module.usage_count}</span>
                   </label>
                 );

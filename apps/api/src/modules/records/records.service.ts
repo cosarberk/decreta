@@ -5,6 +5,7 @@ import { personsRepository } from '../persons/index.js';
 import { labelsRepository } from '../labels/index.js';
 import { modulesRepository } from '../modules/index.js';
 import { linkTypesRepository } from '../link-types/index.js';
+import { notificationsService } from '../notifications/notifications.service.js';
 import {
   recordsRepository,
   type RecordDetail,
@@ -74,14 +75,16 @@ export const recordsService = {
       return id;
     });
 
-    return this.getById(recordId);
+    const record = await this.getById(recordId);
+    notificationsService.notifyRecordCreated(record, createdBy);
+    return record;
   },
 
   /** Var olan bir kayda sonradan bağlantı ekler (detay sayfasından). */
   async addLink(
     recordId: string,
     input: CreateLinkInput,
-    createdBy: string,
+    actor: { id: string; fullName: string },
   ): Promise<RecordDetail> {
     if (input.toRecordId === recordId) {
       throw AppError.badRequest('Bir kayıt kendisine bağlanamaz', 'SELF_LINK');
@@ -94,9 +97,11 @@ export const recordsService = {
       fromRecord: recordId,
       toRecord: input.toRecordId,
       linkTypeId: input.linkTypeId,
-      createdBy,
+      createdBy: actor.id,
     });
-    return this.getById(recordId);
+    const record = await this.getById(recordId);
+    notificationsService.notifyLinkAdded(record, actor.fullName, actor.id);
+    return record;
   },
 
   async removeLink(linkId: string): Promise<void> {

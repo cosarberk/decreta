@@ -1,6 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { authService } from './auth.service.js';
-import { changePasswordSchema, loginSchema, updateProfileSchema } from './auth.schema.js';
+import {
+  changePasswordSchema,
+  loginSchema,
+  resetPasswordSchema,
+  updateProfileSchema,
+} from './auth.schema.js';
 
 /** Kimlik doğrulama rotaları: giriş ve oturum profili. */
 export async function authRoutes(app: FastifyInstance): Promise<void> {
@@ -31,6 +36,13 @@ export async function authRoutes(app: FastifyInstance): Promise<void> {
   app.post('/auth/me/password', { preHandler: app.authenticate }, async (request, reply) => {
     const { currentPassword, newPassword } = changePasswordSchema.parse(request.body);
     await authService.changePassword(request.user.sub, currentPassword, newPassword);
+    return reply.code(204).send();
+  });
+
+  // Public: e-postayla gelen token ile parola belirleme (giriş gerektirmez).
+  app.post('/auth/reset', async (request, reply) => {
+    const { token, newPassword } = resetPasswordSchema.parse(request.body);
+    await authService.resetPassword(token, newPassword);
     return reply.code(204).send();
   });
 }

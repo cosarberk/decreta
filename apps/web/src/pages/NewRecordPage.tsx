@@ -123,14 +123,15 @@ export function NewRecordPage(): JSX.Element {
 
   return (
     <>
-      <div className="page-head">
-        <div>
-          <h1 className="page-title">{t('newRecord.title')}</h1>
-          <p className="page-subtitle">{t('newRecord.subtitle')}</p>
+      <div className="form-wrap">
+        <div className="page-head">
+          <div>
+            <h1 className="page-title">{t('newRecord.title')}</h1>
+            <p className="page-subtitle">{t('newRecord.subtitle')}</p>
+          </div>
         </div>
-      </div>
 
-      <form className="card form-card" onSubmit={handleSubmit}>
+        <form className="card form-card" onSubmit={handleSubmit}>
         <div className="form-grid">
           {error && <div className="form-error">{error}</div>}
 
@@ -269,7 +270,8 @@ export function NewRecordPage(): JSX.Element {
             </button>
           </div>
         </div>
-      </form>
+        </form>
+      </div>
 
       <RecordSidePanel recordId={panelId} onClose={() => setPanelId(null)} />
     </>
