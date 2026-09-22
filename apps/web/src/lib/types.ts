@@ -1,0 +1,121 @@
+/** Etkilenen alan — kaydın açılma eşiği olan üç boyut. */
+export const AFFECTS = ['analiz', 'test', 'kod'] as const;
+export type Affect = (typeof AFFECTS)[number];
+
+export type Role = 'admin' | 'user';
+
+export interface AuthUserInfo {
+  id: string;
+  email: string;
+  fullName: string;
+  role: Role;
+}
+
+export interface RecordPerson {
+  id: string;
+  fullName: string;
+}
+
+export interface RecordLabel {
+  id: string;
+  name: string;
+  color: string | null;
+}
+
+export interface RecordModule {
+  id: string;
+  name: string;
+}
+
+/** Bir kaydın detayında gösterilen tek bir bağlantı (yön farkındalıklı). */
+export interface RecordLinkView {
+  id: string;
+  direction: 'out' | 'in';
+  typeId: string;
+  typeLabel: string;
+  color: string | null;
+  isSupersede: boolean;
+  createdAt: string;
+  record: { id: string; refNo: number; decision: string };
+}
+
+/** Listede kullanılan hafif kayıt görünümü. */
+export interface RecordSummary {
+  id: string;
+  refNo: number;
+  decision: string;
+  rationale: string;
+  affects: Affect[];
+  createdAt: string;
+  createdBy: RecordPerson;
+  modules: RecordModule[];
+  witnesses: RecordPerson[];
+  deciders: RecordPerson[];
+  labels: RecordLabel[];
+  isSuperseded: boolean;
+}
+
+/** Detay görünümü: özet + tüm bağlantılar. */
+export interface RecordDetail extends RecordSummary {
+  links: RecordLinkView[];
+}
+
+export interface RecordSearchResponse {
+  items: RecordSummary[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pageCount: number;
+}
+
+export interface LabelWithUsage {
+  id: string;
+  name: string;
+  color: string | null;
+  created_at: string;
+  usage_count: number;
+}
+
+export interface ModuleWithUsage {
+  id: string;
+  name: string;
+  created_at: string;
+  usage_count: number;
+}
+
+export interface LinkType {
+  id: string;
+  forward_name: string;
+  inverse_name: string;
+  color: string | null;
+  is_supersede: boolean;
+  created_at: string;
+}
+
+export interface PublicUser {
+  id: string;
+  email: string;
+  full_name: string;
+  role: Role;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+/** Oluşturma anında eklenecek bağlantı. */
+export interface LinkInput {
+  toRecordId: string;
+  linkTypeId: string;
+}
+
+/** Kayıt oluşturma isteği gövdesi. */
+export interface CreateRecordPayload {
+  decision: string;
+  rationale: string;
+  affects: Affect[];
+  modules: string[];
+  witnesses: string[];
+  deciders: string[];
+  labels: string[];
+  links: LinkInput[];
+}

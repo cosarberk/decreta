@@ -1,0 +1,70 @@
+# Geliştirme ortamı: her servis ayrı konteynerde, kaynak kodu bind-mount ile
+# canlı yeniden yükleme (hot reload) yapar. Üretim (tek image) için kök
+# dizindeki Dockerfile kullanılır — bu compose dosyası yalnızca dev içindir.
+name: decreta-dev
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-decreta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-decreta_dev_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-decreta}
+    ports:
+      # Host tarafında çakışmayı önlemek için 5433; konteyner içi hep 5432.
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+    volumes:
+      - ./.data/pg:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-decreta} -d ${POSTGRES_DB:-decreta}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432 # konteyner ağı içi sabit iç port
+      POSTGRES_USER: ${POSTGRES_USER:-decreta}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-decreta_dev_pw}
+      POSTGRES_DB: ${POSTGRES_DB:-decreta}
+      API_PORT: 4000
+      JWT_SECRET: ${JWT_SECRET:-dev_secret_change_me}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-admin@decreta.local}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-admin}
+      BOOTSTRAP_ADMIN_NAME: ${BOOTSTRAP_ADMIN_NAME:-Sistem Yöneticisi}
+    ports:
+      - "${API_PORT:-4000}:4000"
+    volumes:
+      - ./apps/api:/app/apps/api
+      - ./tsconfig.base.json:/app/tsconfig.base.json
+      - api_node_modules:/app/apps/api/node_modules
+
+  web:
+    image: node:26-alpine
+    restart: unless-stopped
+    working_dir: /app/apps/web
+    depends_on:
+      - api
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:4000}
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    ports:
+      - "${WEB_PORT:-5173}:5173"
+    volumes:
+      - ./apps/web:/app/apps/web
+      - ./tsconfig.base.json:/app/tsconfig.base.json
+      - web_node_modules:/app/apps/web/node_modules
+
+volumes:
+  api_node_modules:
+  web_node_modules:

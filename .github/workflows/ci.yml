@@ -1,0 +1,34 @@
+name: CI
+
+# dev'e push ve dev/main'e açılan PR'larda çalışır. Sadece doğrulama — image push yok.
+on:
+  push:
+    branches: [dev]
+  pull_request:
+    branches: [dev, main]
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Typecheck (API)
+        run: npm run typecheck --workspace apps/api
+
+      - name: Typecheck (Web)
+        run: npm run typecheck --workspace apps/web
+
+      - name: Build (API)
+        run: npm run build --workspace apps/api
+
+      - name: Build (Web)
+        run: npm run build --workspace apps/web

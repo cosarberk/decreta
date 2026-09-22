@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32" role="img" aria-label="Decreta">
+  <defs>
+    <linearGradient id="dcr-bg" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="0" y2="32">
+      <stop offset="0" stop-color="#274468"/>
+      <stop offset="1" stop-color="#1a3252"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="32" height="32" rx="7" fill="url(#dcr-bg)"/>
+  <!-- Mühür kenarı: ince iç çerçeve -->
+  <rect x="3.5" y="3.5" width="25" height="25" rx="4.5" fill="none" stroke="#f5f4f0" stroke-opacity="0.28" stroke-width="1"/>
+  <!-- "D" monogramı -->
+  <path d="M10 7 H16 A9 9 0 0 1 16 25 H10 Z" fill="#f5f4f0"/>
+  <path d="M14 11 H16 A5 5 0 0 1 16 21 H14 Z" fill="url(#dcr-bg)"/>
+</svg>

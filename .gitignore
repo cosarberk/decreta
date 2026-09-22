@@ -1,0 +1,28 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+dist/
+build/
+apps/api/dist/
+apps/web/dist/
+
+# env
+.env
+.env.local
+*.local
+
+# logs
+logs/
+*.log
+npm-debug.log*
+
+# editor / os
+.DS_Store
+.idea/
+*.swp
+
+# docker volumes (local)
+.data/

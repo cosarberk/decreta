@@ -1,0 +1,10 @@
+# Geliştirme imajı: bağımlılıklar kurulur, kaynak kod compose tarafından
+# bind-mount edilir ve tsx watch ile canlı yeniden yükleme yapılır.
+FROM node:26-alpine
+WORKDIR /app/apps/api
+COPY apps/api/package*.json ./
+RUN npm install
+COPY tsconfig.base.json /app/tsconfig.base.json
+COPY apps/api/ ./
+EXPOSE 4000
+CMD ["npm", "run", "dev"]

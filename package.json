@@ -1,0 +1,23 @@
+{
+  "name": "decreta",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Decreta — analiz, test ve kodu etkileyen kararların değiştirilemez (append-only) resmî kayıt defteri.",
+  "type": "module",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "scripts": {
+    "dev": "docker compose up --build",
+    "dev:down": "docker compose down",
+    "dev:reset": "docker compose down -v",
+    "build": "docker build -t decreta:latest .",
+    "start": "docker run --rm -p 4000:4000 --env-file .env decreta:latest",
+    "api": "npm run dev --workspace apps/api",
+    "web": "npm run dev --workspace apps/web"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

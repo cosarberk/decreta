@@ -1,0 +1,62 @@
+# ── Uygulama image'ı (tek image: Fastify hem web hem API'yi 4000'de servis eder) ──
+image:
+  repository: docker.io/cosarberk/decreta
+  tag: latest
+  # Always: Rancher'da "Redeploy" her seferinde taze `latest`'i çeker; güncelleme
+  # için tag jonglörlüğü gerekmez.
+  pullPolicy: Always
+
+# Private registry ise: kubectl create secret docker-registry ... ve adını buraya
+imagePullSecrets: []
+#  - name: dockerhub
+
+replicaCount: 1
+
+# ── Zorunlu secret'lar (Rancher install formunda doldur) ───
+secrets:
+  # openssl rand -base64 48
+  jwtSecret: ""
+  # İlk admin parolası (email: config.BOOTSTRAP_ADMIN_EMAIL). Bu haliyle kurup
+  # admin@decreta.local + decretaadmin123 ile girebilirsin. Kendi parolanı
+  # yazarsan (min 6 karakter) ilk admin onunla oluşturulur. Not: ilk admin
+  # yalnızca sistemde hiç admin yokken oluşturulur; sonradan değiştirmek DB'den yapılır.
+  adminPassword: "decretaadmin123"
+
+# ── Gizli olmayan ayarlar ──────────────────────────────────
+config:
+  NODE_ENV: production
+  API_PORT: "4000"
+  # İlk admin (bootstrap) e-postası ve görünen adı.
+  BOOTSTRAP_ADMIN_EMAIL: admin@decreta.local
+  BOOTSTRAP_ADMIN_NAME: "Sistem Yöneticisi"
+
+# ── Cluster içi Postgres ───────────────────────────────────
+postgres:
+  enabled: true
+  image: postgres:17-alpine
+  user: decreta
+  # Boşsa install sırasında doldur (secret'a yazılır).
+  password: ""
+  database: decreta
+  storage: 5Gi
+
+# ── Ingress ────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  host: decreta.example.com
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+  tls:
+    enabled: false
+    secretName: decreta-tls
+
+service:
+  port: 80
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 192Mi
+  limits:
+    memory: 384Mi

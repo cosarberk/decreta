@@ -1,0 +1,17 @@
+Decreta kuruldu: {{ include "decreta.fullname" . }}
+
+1. Pod'ları izle:
+   kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }} -w
+
+2. İlk yönetici:
+   E-posta : {{ .Values.config.BOOTSTRAP_ADMIN_EMAIL }}
+   Parola  : (secrets.adminPassword ile ayarladığın değer)
+   Not: İlk admin yalnızca sistemde hiç admin yokken oluşturulur.
+
+{{- if .Values.ingress.enabled }}
+3. Erişim: http{{ if .Values.ingress.tls.enabled }}s{{ end }}://{{ .Values.ingress.host }}
+{{- else }}
+3. Ingress kapalı — port-forward ile eriş:
+   kubectl -n {{ .Release.Namespace }} port-forward svc/{{ include "decreta.fullname" . }} 8080:{{ .Values.service.port }}
+   Sonra: http://localhost:8080
+{{- end }}

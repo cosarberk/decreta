@@ -1,0 +1,11 @@
+apiVersion: v2
+name: decreta
+description: Analiz, test ve kodu etkileyen kararların değiştirilemez kaydı (tek image)
+type: application
+version: 0.1.0
+appVersion: "latest"
+home: https://github.com/cosarberk/decreta
+sources:
+  - https://github.com/cosarberk/decreta
+maintainers:
+  - name: cosarberk
