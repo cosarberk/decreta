@@ -1,6 +1,8 @@
 name: Publish image
 
-# main'e push/merge olunca tek image'ı (backend + frontend) Docker Hub'a yayınlar.
+# main'e her push/merge'de: sürümü OTOMATİK bump eder (git tag),
+# Helm chart version'ını da bump edip push eder (Rancher "Edit → version"
+# dropdown'unda görünür), ve tek image'ı Docker Hub'a yayınlar.
 on:
   push:
     branches: [main]
@@ -13,9 +15,35 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write # git tag + chart version push için
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Sürümü otomatik artır ve git tag'i at (patch varsayılan;
+      # commit mesajında #minor / #major ile kontrol edilir).
+      - name: Bump version & tag
+        id: tag
+        uses: anothrNick/github-tag-action@1.71.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEFAULT_BUMP: patch
+          INITIAL_VERSION: 0.1.0
+          WITH_V: true
+          RELEASE_BRANCHES: main
+
+      # Helm chart version'ını yeni sürüme eşitle ve push et
+      # ([skip ci] ile bu push tekrar publish tetiklemez → sonsuz döngü yok).
+      - name: Bump Helm chart version
+        run: |
+          VER="${{ steps.tag.outputs.new_tag }}"
+          VER="${VER#v}"
+          sed -i "s/^version:.*/version: ${VER}/" charts/decreta/Chart.yaml
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git commit -am "chore(release): helm chart ${VER} [skip ci]"
+          git push origin HEAD:main
 
       - uses: docker/setup-buildx-action@v3
 
@@ -32,6 +60,7 @@ jobs:
           images: ${{ env.REGISTRY }}/${{ env.OWNER }}/decreta
           tags: |
             type=raw,value=latest
+            type=raw,value=${{ steps.tag.outputs.new_tag }}
             type=sha,format=long
 
       - name: Build & push
