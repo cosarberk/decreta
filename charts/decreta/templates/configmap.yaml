@@ -18,3 +18,4 @@ data:
   SMTP_PORT: {{ .Values.config.SMTP_PORT | quote }}
   SMTP_SECURE: {{ .Values.config.SMTP_SECURE | quote }}
   SMTP_FROM: {{ .Values.config.SMTP_FROM | quote }}
+  SMTP_TLS_REJECT_UNAUTHORIZED: {{ .Values.config.SMTP_TLS_REJECT_UNAUTHORIZED | quote }}

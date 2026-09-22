@@ -40,6 +40,8 @@ config:
   SMTP_PORT: "587"
   SMTP_SECURE: "false"
   SMTP_FROM: "Decreta <no-reply@decreta.local>"
+  # Kendi kendine imzalı (self-signed) sertifikalı mail sunucusu için "false".
+  SMTP_TLS_REJECT_UNAUTHORIZED: "true"
 
 # ── Cluster içi Postgres ───────────────────────────────────
 postgres:

@@ -670,6 +670,53 @@ a.topbar-user:hover {
   font-size: 13px;
   color: var(--ok);
 }
+.send-progress {
+  padding: 14px 16px;
+  margin-bottom: 12px;
+}
+.send-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+}
+.send-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  font-size: 13px;
+  border-bottom: 1px solid var(--line);
+}
+.send-line:last-child {
+  border-bottom: none;
+}
+.send-icon {
+  width: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.send-sent .send-icon {
+  color: var(--ok);
+}
+.send-sending .send-icon {
+  color: var(--warn);
+}
+.send-failed {
+  color: var(--danger);
+}
+.send-name {
+  font-weight: 500;
+}
+.send-email {
+  font-size: 12px;
+}
+.send-state {
+  margin-left: auto;
+  font-size: 12px;
+  white-space: nowrap;
+}
 .bulk-hint {
   font-size: 11px;
   flex-basis: 100%;

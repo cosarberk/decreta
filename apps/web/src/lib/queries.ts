@@ -1,4 +1,4 @@
-import { apiGetText, apiRequest } from './api';
+import { apiGetText, apiRequest, apiStream } from './api';
 import type {
   ActivitySearchResponse,
   Affect,
@@ -173,12 +173,12 @@ export const api = {
     return apiRequest<void>(`/users/${id}`, { method: 'DELETE' });
   },
 
-  sendUserInfo(userIds: string[]): Promise<BulkMailResult> {
-    return apiRequest<BulkMailResult>('/users/send-info', { method: 'POST', body: { userIds } });
+  sendUserInfoStream(userIds: string[], onLine: (obj: MailStreamEvent) => void): Promise<void> {
+    return apiStream('/users/send-info', { userIds }, (o) => onLine(o as MailStreamEvent));
   },
 
-  sendUserReset(userIds: string[]): Promise<BulkMailResult> {
-    return apiRequest<BulkMailResult>('/users/send-reset', { method: 'POST', body: { userIds } });
+  sendUserResetStream(userIds: string[], onLine: (obj: MailStreamEvent) => void): Promise<void> {
+    return apiStream('/users/send-reset', { userIds }, (o) => onLine(o as MailStreamEvent));
   },
 
   resetPassword(token: string, newPassword: string): Promise<void> {
@@ -242,3 +242,17 @@ export interface BulkMailResult {
   failed: number;
   skipped: number;
 }
+
+/** Canlı gönderim akışında gelen olaylar (NDJSON). */
+export type MailStreamEvent =
+  | {
+      type: 'progress';
+      index: number;
+      total: number;
+      email: string;
+      name: string;
+      status: 'sending' | 'sent' | 'failed';
+      error?: string;
+    }
+  | { type: 'done'; sent: number; failed: number; skipped: number }
+  | { type: 'error'; message: string };

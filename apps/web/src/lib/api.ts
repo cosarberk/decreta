@@ -74,6 +74,49 @@ export async function apiGetText(
   return response.text();
 }
 
+/**
+ * POST yapıp yanıtı NDJSON (satır başına bir JSON) akışı olarak okur; her satır
+ * için `onLine` çağrılır. Canlı ilerleme (toplu e-posta gönderimi) için.
+ */
+export async function apiStream(
+  path: string,
+  body: unknown,
+  onLine: (obj: unknown) => void,
+): Promise<void> {
+  const url = new URL(`${BASE_URL}${path}`, window.location.origin);
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  const token = tokenStore.get();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(url.toString(), { method: 'POST', headers, body: JSON.stringify(body) });
+  if (!response.ok || !response.body) {
+    if (response.status === 401) tokenStore.clear();
+    throw new ApiError(response.status, 'ERROR', 'Gönderim başlatılamadı');
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  const flush = (chunk: string): void => {
+    const line = chunk.trim();
+    if (!line) return;
+    try {
+      onLine(JSON.parse(line));
+    } catch {
+      /* bozuk satırı yoksay */
+    }
+  };
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buffer += decoder.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buffer.indexOf('\n')) >= 0) {
+      flush(buffer.slice(0, idx));
+      buffer = buffer.slice(idx + 1);
+    }
+  }
+  flush(buffer);
+}
+
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = new URL(`${BASE_URL}${path}`, window.location.origin);
   if (options.query) {

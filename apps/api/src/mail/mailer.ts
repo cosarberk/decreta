@@ -15,6 +15,11 @@ function getTransporter(): Transporter | null {
         config.mail.user && config.mail.pass
           ? { user: config.mail.user, pass: config.mail.pass }
           : undefined,
+      // Sunucuya ulaşılamazsa saatlerce asılı kalmasın diye kısa timeout'lar.
+      connectionTimeout: 10_000,
+      greetingTimeout: 10_000,
+      socketTimeout: 20_000,
+      tls: { rejectUnauthorized: config.mail.rejectUnauthorized },
     });
   }
   return transporter;
@@ -27,15 +32,20 @@ export interface MailMessage {
   text: string;
 }
 
+export interface SendResult {
+  ok: boolean;
+  error?: string;
+}
+
 /**
  * E-postayı best-effort gönderir. SMTP yapılandırılmamışsa ya da hata olursa
- * çağıran akışı ASLA bozmaz; yalnızca sonucu döndürür/loglar.
+ * çağıran akışı ASLA bozmaz; sonucu (ve varsa hata mesajını) döndürür/loglar.
  */
-export async function sendMail(message: MailMessage): Promise<boolean> {
+export async function sendMail(message: MailMessage): Promise<SendResult> {
   const tx = getTransporter();
   if (!tx) {
     console.warn(`[mail] SMTP yapılandırılmadı, atlanıyor: "${message.subject}" -> ${message.to}`);
-    return false;
+    return { ok: false, error: 'SMTP yapılandırılmadı' };
   }
   try {
     await tx.sendMail({
@@ -45,10 +55,11 @@ export async function sendMail(message: MailMessage): Promise<boolean> {
       text: message.text,
       html: message.html,
     });
-    return true;
+    return { ok: true };
   } catch (error) {
-    console.error(`[mail] Gönderilemedi (${message.to}):`, (error as Error).message);
-    return false;
+    const msg = (error as Error).message;
+    console.error(`[mail] Gönderilemedi (${message.to}):`, msg);
+    return { ok: false, error: msg };
   }
 }
 

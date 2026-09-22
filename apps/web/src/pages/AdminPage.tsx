@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../lib/queries';
+import { api, type MailStreamEvent } from '../lib/queries';
 import { ApiError } from '../lib/api';
 import type { Role } from '../lib/types';
 import { LabelChip } from '../components/atoms';
@@ -102,17 +102,43 @@ function UsersTab(): JSX.Element {
     setSelected(allSelected ? new Set() : new Set(users.map((u) => u.id)));
   };
 
-  const infoMutation = useMutation({
-    mutationFn: () => api.sendUserInfo([...selected]),
-    onSuccess: (r) => setMailMsg(t('admin.sendResult', { sent: r.sent, failed: r.failed })),
-    onError: (err) => setMailMsg(err instanceof ApiError ? err.message : t('admin.actionError')),
-  });
-  const resetMutation = useMutation({
-    mutationFn: () => api.sendUserReset([...selected]),
-    onSuccess: (r) => setMailMsg(t('admin.sendResult', { sent: r.sent, failed: r.failed })),
-    onError: (err) => setMailMsg(err instanceof ApiError ? err.message : t('admin.actionError')),
-  });
-  const mailBusy = infoMutation.isPending || resetMutation.isPending;
+  const [sending, setSending] = useState(false);
+  const [progress, setProgress] = useState<
+    { email: string; name: string; status: 'sending' | 'sent' | 'failed'; error?: string }[]
+  >([]);
+  const mailBusy = sending;
+
+  const runSend = async (
+    stream: (ids: string[], onLine: (e: MailStreamEvent) => void) => Promise<void>,
+  ): Promise<void> => {
+    const ids = [...selected];
+    if (ids.length === 0) return;
+    setMailMsg(null);
+    setProgress([]);
+    setSending(true);
+    try {
+      await stream(ids, (e) => {
+        if (e.type === 'progress') {
+          setProgress((prev) => {
+            const next = prev.slice();
+            const idx = next.findIndex((p) => p.email === e.email);
+            const line = { email: e.email, name: e.name, status: e.status, error: e.error };
+            if (idx >= 0) next[idx] = line;
+            else next.push(line);
+            return next;
+          });
+        } else if (e.type === 'done') {
+          setMailMsg(t('admin.sendResult', { sent: e.sent, failed: e.failed }));
+        } else if (e.type === 'error') {
+          setMailMsg(e.message);
+        }
+      });
+    } catch (err) {
+      setMailMsg(err instanceof ApiError ? err.message : t('admin.actionError'));
+    } finally {
+      setSending(false);
+    }
+  };
 
   const confirm = useConfirm();
   const [editId, setEditId] = useState<string | null>(null);
@@ -211,10 +237,7 @@ function UsersTab(): JSX.Element {
           type="button"
           className="btn btn-sm"
           disabled={selected.size === 0 || mailBusy}
-          onClick={() => {
-            setMailMsg(null);
-            infoMutation.mutate();
-          }}
+          onClick={() => void runSend(api.sendUserInfoStream)}
         >
           {mailBusy ? t('admin.sending') : t('admin.sendInfo')}
         </button>
@@ -222,16 +245,39 @@ function UsersTab(): JSX.Element {
           type="button"
           className="btn btn-sm"
           disabled={selected.size === 0 || mailBusy}
-          onClick={() => {
-            setMailMsg(null);
-            resetMutation.mutate();
-          }}
+          onClick={() => void runSend(api.sendUserResetStream)}
         >
           {mailBusy ? t('admin.sending') : t('admin.sendReset')}
         </button>
         {mailMsg && <span className="bulk-result">{mailMsg}</span>}
         <span className="bulk-hint muted">{t('admin.smtpHint')}</span>
       </div>
+
+      {(sending || progress.length > 0) && (
+        <div className="card send-progress">
+          <div className="filter-group-title" style={{ marginBottom: 10 }}>
+            {t('admin.sendProgress')}
+          </div>
+          <div className="send-progress-list">
+            {progress.map((p) => (
+              <div className={`send-line send-${p.status}`} key={p.email}>
+                <span className="send-icon">
+                  {p.status === 'sending' ? '⏳' : p.status === 'sent' ? '✓' : '✗'}
+                </span>
+                <span className="send-name">{p.name}</span>
+                <span className="send-email muted">{p.email}</span>
+                <span className="send-state">
+                  {p.status === 'sending'
+                    ? t('admin.pSending')
+                    : p.status === 'sent'
+                      ? t('admin.pSent')
+                      : `${t('admin.pFailed')}${p.error ? `: ${p.error}` : ''}`}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
         <table className="data-table">

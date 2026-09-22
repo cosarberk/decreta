@@ -30,6 +30,10 @@ const envSchema = z.object({
   SMTP_USER: z.string().optional(),
   SMTP_PASS: z.string().optional(),
   SMTP_FROM: z.string().default('Decreta <no-reply@decreta.local>'),
+  // Self-signed sertifikalı (kendi kendine imzalı) mail sunucuları için 'false'.
+  SMTP_TLS_REJECT_UNAUTHORIZED: z
+    .preprocess((v) => v !== 'false' && v !== false, z.boolean())
+    .default(true),
 });
 
 const parsed = envSchema.safeParse(process.env);
@@ -63,6 +67,7 @@ export const config = Object.freeze({
     user: parsed.data.SMTP_USER,
     pass: parsed.data.SMTP_PASS,
     from: parsed.data.SMTP_FROM,
+    rejectUnauthorized: parsed.data.SMTP_TLS_REJECT_UNAUTHORIZED,
   },
   bootstrapAdmin:
     parsed.data.BOOTSTRAP_ADMIN_EMAIL && parsed.data.BOOTSTRAP_ADMIN_PASSWORD
