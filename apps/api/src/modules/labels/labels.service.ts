@@ -9,7 +9,7 @@ export const labelsService = {
     return labelsRepository.listWithUsage();
   },
 
-  async create(name: string, color?: string | null): Promise<LabelRow> {
+  async create(name: string, color?: string | null, description?: string | null): Promise<LabelRow> {
     const trimmed = name.trim();
     if (trimmed.length === 0) {
       throw AppError.badRequest('Etiket adı boş olamaz');
@@ -21,10 +21,15 @@ export const labelsService = {
     if (existing) {
       throw AppError.conflict('Bu etiket zaten var', 'LABEL_EXISTS');
     }
-    return labelsRepository.create(trimmed, color ?? null);
+    return labelsRepository.create(trimmed, color ?? null, description?.trim() || null);
   },
 
-  async update(id: string, name: string, color?: string | null): Promise<LabelRow> {
+  async update(
+    id: string,
+    name: string,
+    color?: string | null,
+    description?: string | null,
+  ): Promise<LabelRow> {
     const trimmed = name.trim();
     if (trimmed.length === 0) throw AppError.badRequest('Etiket adı boş olamaz');
     if (color && !HEX_COLOR.test(color)) {
@@ -32,9 +37,18 @@ export const labelsService = {
     }
     const dup = await labelsRepository.findByName(trimmed);
     if (dup && dup.id !== id) throw AppError.conflict('Bu etiket zaten var', 'LABEL_EXISTS');
-    const updated = await labelsRepository.update(id, trimmed, color ?? null);
+    const updated = await labelsRepository.update(id, trimmed, color ?? null, description?.trim() || null);
     if (!updated) throw AppError.notFound('Etiket bulunamadı');
     return updated;
+  },
+
+  async merge(fromId: string, toId: string): Promise<{ name: string; into: string }> {
+    if (fromId === toId) throw AppError.badRequest('Bir etiket kendisiyle birleştirilemez');
+    const from = await labelsRepository.findById(fromId);
+    const to = await labelsRepository.findById(toId);
+    if (!from || !to) throw AppError.notFound('Etiket bulunamadı');
+    await labelsRepository.mergeInto(fromId, toId);
+    return { name: from.name, into: to.name };
   },
 
   async remove(id: string): Promise<string> {

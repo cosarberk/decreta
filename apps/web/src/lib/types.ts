@@ -73,6 +73,7 @@ export interface LabelWithUsage {
   id: string;
   name: string;
   color: string | null;
+  description: string | null;
   created_at: string;
   usage_count: number;
 }
@@ -80,6 +81,7 @@ export interface LabelWithUsage {
 export interface ModuleWithUsage {
   id: string;
   name: string;
+  description: string | null;
   created_at: string;
   usage_count: number;
 }
@@ -90,6 +92,7 @@ export interface LinkType {
   inverse_name: string;
   color: string | null;
   is_supersede: boolean;
+  description: string | null;
   created_at: string;
 }
 

@@ -6,4 +6,5 @@ export const createLabelSchema = z.object({
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, 'Renk #rrggbb biçiminde olmalı')
     .optional(),
+  description: z.string().trim().max(300).optional().nullable(),
 });

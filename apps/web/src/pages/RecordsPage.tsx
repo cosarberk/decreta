@@ -161,7 +161,7 @@ export function RecordsPage(): JSX.Element {
                     className="filter-chip-dot"
                     style={label.color ? { background: label.color } : undefined}
                   />
-                  <span className="filter-chip-label" title={label.name}>
+                  <span className="filter-chip-label" title={label.description || label.name}>
                     {label.name}
                   </span>
                   <span className="count">{label.usage_count}</span>
@@ -183,7 +183,7 @@ export function RecordsPage(): JSX.Element {
                       onChange={() => toggleModule(module.id)}
                     />
                     <span className="filter-chip-dot" />
-                    <span className="filter-chip-label" title={module.name}>
+                    <span className="filter-chip-label" title={module.description || module.name}>
                       {module.name}
                     </span>
                     <span className="count">{module.usage_count}</span>

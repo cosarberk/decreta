@@ -11,6 +11,7 @@ export const linkTypesService = {
     inverseName: string;
     color?: string | null;
     isSupersede: boolean;
+    description?: string | null;
   }): Promise<LinkTypeRow> {
     const forwardName = input.forwardName.trim();
     const inverseName = input.inverseName.trim();
@@ -26,12 +27,28 @@ export const linkTypesService = {
       inverseName,
       color: input.color ?? null,
       isSupersede: input.isSupersede,
+      description: input.description?.trim() || null,
     });
+  },
+
+  async merge(fromId: string, toId: string): Promise<{ name: string; into: string }> {
+    if (fromId === toId) throw AppError.badRequest('Bir link tipi kendisiyle birleştirilemez');
+    const from = await linkTypesRepository.findById(fromId);
+    const to = await linkTypesRepository.findById(toId);
+    if (!from || !to) throw AppError.notFound('Link tipi bulunamadı');
+    await linkTypesRepository.mergeInto(fromId, toId);
+    return { name: from.forward_name, into: to.forward_name };
   },
 
   async update(
     id: string,
-    input: { forwardName: string; inverseName: string; color?: string | null; isSupersede: boolean },
+    input: {
+      forwardName: string;
+      inverseName: string;
+      color?: string | null;
+      isSupersede: boolean;
+      description?: string | null;
+    },
   ): Promise<LinkTypeRow> {
     const forwardName = input.forwardName.trim();
     const inverseName = input.inverseName.trim();
@@ -45,6 +62,7 @@ export const linkTypesService = {
       inverseName,
       color: input.color ?? null,
       isSupersede: input.isSupersede,
+      description: input.description?.trim() || null,
     });
     if (!updated) throw AppError.notFound('Link tipi bulunamadı');
     return updated;

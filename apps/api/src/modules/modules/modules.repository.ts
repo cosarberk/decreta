@@ -1,10 +1,11 @@
 import pg from 'pg';
-import { query } from '../../db/index.js';
+import { query, withTransaction } from '../../db/index.js';
 
 /** `modules` tablosunun satır gösterimi. */
 export interface ModuleRow {
   id: string;
   name: string;
+  description: string | null;
   created_at: string;
 }
 
@@ -31,10 +32,11 @@ export const modulesRepository = {
     return rows[0] ?? null;
   },
 
-  async create(name: string): Promise<ModuleRow> {
-    const rows = await query<ModuleRow>('INSERT INTO modules (name) VALUES ($1) RETURNING *', [
-      name,
-    ]);
+  async create(name: string, description: string | null): Promise<ModuleRow> {
+    const rows = await query<ModuleRow>(
+      'INSERT INTO modules (name, description) VALUES ($1, $2) RETURNING *',
+      [name, description],
+    );
     return rows[0]!;
   },
 
@@ -43,12 +45,26 @@ export const modulesRepository = {
     return rows[0] ?? null;
   },
 
-  async update(id: string, name: string): Promise<ModuleRow | null> {
-    const rows = await query<ModuleRow>('UPDATE modules SET name = $2 WHERE id = $1 RETURNING *', [
-      id,
-      name,
-    ]);
+  async update(id: string, name: string, description: string | null): Promise<ModuleRow | null> {
+    const rows = await query<ModuleRow>(
+      'UPDATE modules SET name = $2, description = $3 WHERE id = $1 RETURNING *',
+      [id, name, description],
+    );
     return rows[0] ?? null;
+  },
+
+  /** `fromId` modülünün tüm kayıt kullanımlarını `toId`'ye taşır ve `fromId`'yi siler. */
+  async mergeInto(fromId: string, toId: string): Promise<void> {
+    await withTransaction(async (client) => {
+      await client.query(
+        `INSERT INTO record_modules (record_id, module_id)
+         SELECT record_id, $2 FROM record_modules WHERE module_id = $1
+         ON CONFLICT DO NOTHING`,
+        [fromId, toId],
+      );
+      await client.query('DELETE FROM record_modules WHERE module_id = $1', [fromId]);
+      await client.query('DELETE FROM modules WHERE id = $1', [fromId]);
+    });
   },
 
   async countUsage(id: string): Promise<number> {

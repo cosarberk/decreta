@@ -71,32 +71,51 @@ export const api = {
     return apiRequest<LabelWithUsage[]>('/labels');
   },
 
-  createLabel(name: string, color?: string): Promise<LabelWithUsage> {
-    return apiRequest<LabelWithUsage>('/labels', { method: 'POST', body: { name, color } });
+  createLabel(name: string, color?: string, description?: string): Promise<LabelWithUsage> {
+    return apiRequest<LabelWithUsage>('/labels', { method: 'POST', body: { name, color, description } });
   },
 
-  updateLabel(id: string, name: string, color?: string | null): Promise<LabelWithUsage> {
-    return apiRequest<LabelWithUsage>(`/labels/${id}`, { method: 'PATCH', body: { name, color } });
+  updateLabel(
+    id: string,
+    name: string,
+    color?: string | null,
+    description?: string | null,
+  ): Promise<LabelWithUsage> {
+    return apiRequest<LabelWithUsage>(`/labels/${id}`, {
+      method: 'PATCH',
+      body: { name, color, description },
+    });
   },
 
   deleteLabel(id: string): Promise<void> {
     return apiRequest<void>(`/labels/${id}`, { method: 'DELETE' });
   },
 
+  mergeLabel(id: string, intoId: string): Promise<void> {
+    return apiRequest<void>(`/labels/${id}/merge`, { method: 'POST', body: { intoId } });
+  },
+
   listModules(): Promise<ModuleWithUsage[]> {
     return apiRequest<ModuleWithUsage[]>('/modules');
   },
 
-  createModule(name: string): Promise<ModuleWithUsage> {
-    return apiRequest<ModuleWithUsage>('/modules', { method: 'POST', body: { name } });
+  createModule(name: string, description?: string): Promise<ModuleWithUsage> {
+    return apiRequest<ModuleWithUsage>('/modules', { method: 'POST', body: { name, description } });
   },
 
-  updateModule(id: string, name: string): Promise<ModuleWithUsage> {
-    return apiRequest<ModuleWithUsage>(`/modules/${id}`, { method: 'PATCH', body: { name } });
+  updateModule(id: string, name: string, description?: string | null): Promise<ModuleWithUsage> {
+    return apiRequest<ModuleWithUsage>(`/modules/${id}`, {
+      method: 'PATCH',
+      body: { name, description },
+    });
   },
 
   deleteModule(id: string): Promise<void> {
     return apiRequest<void>(`/modules/${id}`, { method: 'DELETE' });
+  },
+
+  mergeModule(id: string, intoId: string): Promise<void> {
+    return apiRequest<void>(`/modules/${id}/merge`, { method: 'POST', body: { intoId } });
   },
 
   listLinkTypes(): Promise<LinkType[]> {
@@ -108,19 +127,30 @@ export const api = {
     inverseName: string;
     color?: string;
     isSupersede: boolean;
+    description?: string;
   }): Promise<LinkType> {
     return apiRequest<LinkType>('/link-types', { method: 'POST', body: input });
   },
 
   updateLinkType(
     id: string,
-    input: { forwardName: string; inverseName: string; color?: string; isSupersede: boolean },
+    input: {
+      forwardName: string;
+      inverseName: string;
+      color?: string;
+      isSupersede: boolean;
+      description?: string;
+    },
   ): Promise<LinkType> {
     return apiRequest<LinkType>(`/link-types/${id}`, { method: 'PATCH', body: input });
   },
 
   deleteLinkType(id: string): Promise<void> {
     return apiRequest<void>(`/link-types/${id}`, { method: 'DELETE' });
+  },
+
+  mergeLinkType(id: string, intoId: string): Promise<void> {
+    return apiRequest<void>(`/link-types/${id}/merge`, { method: 'POST', body: { intoId } });
   },
 
   async searchPersons(query: string): Promise<string[]> {

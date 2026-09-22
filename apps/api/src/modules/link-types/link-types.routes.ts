@@ -11,9 +11,11 @@ const createLinkTypeSchema = z.object({
     .regex(/^#[0-9a-fA-F]{6}$/, 'Renk #rrggbb biçiminde olmalı')
     .optional(),
   isSupersede: z.boolean().default(false),
+  description: z.string().trim().max(300).optional().nullable(),
 });
 
 const idParamsSchema = z.object({ id: z.string().uuid('Geçersiz link tipi kimliği') });
+const mergeSchema = z.object({ intoId: z.string().uuid('Geçersiz hedef link tipi') });
 
 /** Link tipi rotaları — dinamik bağlantı tiplerinin yönetimi. */
 export async function linkTypesRoutes(app: FastifyInstance): Promise<void> {
@@ -54,6 +56,20 @@ export async function linkTypesRoutes(app: FastifyInstance): Promise<void> {
       actorId: request.user.sub,
       actorName: request.user.fullName,
       targetRef: name,
+    });
+    return reply.code(204).send();
+  });
+
+  app.post('/link-types/:id/merge', { preHandler: app.requireAdmin }, async (request, reply) => {
+    const { id } = idParamsSchema.parse(request.params);
+    const { intoId } = mergeSchema.parse(request.body);
+    const res = await linkTypesService.merge(id, intoId);
+    void activityService.log({
+      action: 'link_type_deleted',
+      actorId: request.user.sub,
+      actorName: request.user.fullName,
+      targetRef: res.name,
+      targetText: `→ ${res.into} (birleştirildi)`,
     });
     return reply.code(204).send();
   });

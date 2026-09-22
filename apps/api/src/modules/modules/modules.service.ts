@@ -6,7 +6,7 @@ export const modulesService = {
     return modulesRepository.listWithUsage();
   },
 
-  async create(name: string): Promise<ModuleRow> {
+  async create(name: string, description?: string | null): Promise<ModuleRow> {
     const trimmed = name.trim();
     if (trimmed.length === 0) {
       throw AppError.badRequest('Modül adı boş olamaz');
@@ -15,17 +15,27 @@ export const modulesService = {
     if (existing) {
       throw AppError.conflict('Bu modül zaten var', 'MODULE_EXISTS');
     }
-    return modulesRepository.create(trimmed);
+    return modulesRepository.create(trimmed, description?.trim() || null);
   },
 
-  async update(id: string, name: string): Promise<ModuleRow> {
+  async update(id: string, name: string, description?: string | null): Promise<ModuleRow> {
     const trimmed = name.trim();
     if (trimmed.length === 0) throw AppError.badRequest('Modül adı boş olamaz');
     const dup = await modulesRepository.findByName(trimmed);
     if (dup && dup.id !== id) throw AppError.conflict('Bu modül zaten var', 'MODULE_EXISTS');
-    const updated = await modulesRepository.update(id, trimmed);
+    const updated = await modulesRepository.update(id, trimmed, description?.trim() || null);
     if (!updated) throw AppError.notFound('Modül bulunamadı');
     return updated;
+  },
+
+  /** `fromId` modülünü `toId` ile birleştirir: kullanımları taşır, kaynağı siler. */
+  async merge(fromId: string, toId: string): Promise<{ name: string; into: string }> {
+    if (fromId === toId) throw AppError.badRequest('Bir modül kendisiyle birleştirilemez');
+    const from = await modulesRepository.findById(fromId);
+    const to = await modulesRepository.findById(toId);
+    if (!from || !to) throw AppError.notFound('Modül bulunamadı');
+    await modulesRepository.mergeInto(fromId, toId);
+    return { name: from.name, into: to.name };
   },
 
   async remove(id: string): Promise<string> {

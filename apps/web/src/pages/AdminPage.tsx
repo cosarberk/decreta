@@ -398,48 +398,58 @@ function LabelsTab(): JSX.Element {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const labelsQuery = useQuery({ queryKey: ['labels'], queryFn: api.listLabels });
+  const labels = labelsQuery.data ?? [];
   const [name, setName] = useState('');
   const [color, setColor] = useState('#33518f');
+  const [desc, setDesc] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const invalidate = (): void => void queryClient.invalidateQueries({ queryKey: ['labels'] });
+  const onErr = (err: unknown): void =>
+    setError(err instanceof ApiError ? err.message : t('admin.labelError'));
 
   const createMutation = useMutation({
-    mutationFn: () => api.createLabel(name.trim(), color),
+    mutationFn: () => api.createLabel(name.trim(), color, desc.trim() || undefined),
     onSuccess: () => {
       setName('');
-      setError(null);
-      void queryClient.invalidateQueries({ queryKey: ['labels'] });
-    },
-    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.labelError')),
-  });
-
-  const confirm = useConfirm();
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editColor, setEditColor] = useState('#33518f');
-  const invalidate = (): void => void queryClient.invalidateQueries({ queryKey: ['labels'] });
-  const updateMutation = useMutation({
-    mutationFn: (input: { id: string; name: string; color: string }) =>
-      api.updateLabel(input.id, input.name, input.color),
-    onSuccess: () => {
-      setEditId(null);
+      setDesc('');
       setError(null);
       invalidate();
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.labelError')),
+    onError: onErr,
+  });
+
+  const confirm = useConfirm();
+  const [edit, setEdit] = useState<{ id: string; name: string; color: string; desc: string } | null>(null);
+  const [merge, setMerge] = useState<{ id: string; into: string } | null>(null);
+
+  const updateMutation = useMutation({
+    mutationFn: () => api.updateLabel(edit!.id, edit!.name, edit!.color, edit!.desc.trim() || null),
+    onSuccess: () => {
+      setEdit(null);
+      setError(null);
+      invalidate();
+    },
+    onError: onErr,
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.deleteLabel(id),
-    onSuccess: invalidate,
-    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.labelError')),
+    onSuccess: () => {
+      setError(null);
+      invalidate();
+    },
+    onError: onErr,
+  });
+  const mergeMutation = useMutation({
+    mutationFn: () => api.mergeLabel(merge!.id, merge!.into),
+    onSuccess: () => {
+      setMerge(null);
+      setError(null);
+      invalidate();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.mergeError')),
   });
   const askDelete = async (id: string, label: string): Promise<void> => {
-    if (
-      await confirm({
-        message: t('common.deleteConfirm', { name: label }),
-        danger: true,
-        confirmLabel: t('common.delete'),
-      })
-    ) {
+    if (await confirm({ message: t('common.deleteConfirm', { name: label }), danger: true, confirmLabel: t('common.delete') })) {
       deleteMutation.mutate(id);
     }
   };
@@ -459,22 +469,30 @@ function LabelsTab(): JSX.Element {
         {error && <div className="form-error" style={{ marginBottom: 14 }}>{error}</div>}
         <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
           <input
-            className="input"
-            style={{ maxWidth: 260 }}
-            placeholder={t('admin.labelName')}
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
-          <input
             type="color"
             value={color}
             onChange={(e) => setColor(e.target.value)}
             style={{ width: 44, height: 40, padding: 2, border: '1px solid var(--line-strong)', borderRadius: 'var(--r)' }}
           />
+          <input
+            className="input"
+            style={{ maxWidth: 220 }}
+            placeholder={t('admin.labelName')}
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            className="input"
+            style={{ flex: 1, minWidth: 200 }}
+            placeholder={t('admin.descriptionPlaceholder')}
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
+          />
           <button type="submit" className="btn btn-primary" disabled={createMutation.isPending}>
             {t('common.add')}
           </button>
         </div>
+        <span className="hint" style={{ marginTop: 8, display: 'block' }}>{t('admin.mergeHint')}</span>
       </form>
 
       <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
@@ -483,75 +501,58 @@ function LabelsTab(): JSX.Element {
             <tr>
               <th>{t('admin.colLabel')}</th>
               <th>{t('admin.colUsage')}</th>
-              <th>{t('admin.colCreated')}</th>
               <th style={{ textAlign: 'right' }}>{t('admin.colAction')}</th>
             </tr>
           </thead>
           <tbody>
-            {(labelsQuery.data ?? []).map((label) => (
+            {labels.map((label) => (
               <tr key={label.id}>
                 <td>
-                  {editId === label.id ? (
-                    <div className="row" style={{ gap: 8 }}>
-                      <input
-                        type="color"
-                        value={editColor}
-                        onChange={(e) => setEditColor(e.target.value)}
-                        style={{ width: 34, height: 30 }}
-                      />
-                      <input
-                        className="input"
-                        style={{ padding: '4px 8px', maxWidth: 200 }}
-                        value={editName}
-                        onChange={(e) => setEditName(e.target.value)}
-                      />
+                  {edit?.id === label.id ? (
+                    <div className="stack" style={{ gap: 6 }}>
+                      <div className="row" style={{ gap: 8 }}>
+                        <input type="color" value={edit.color} onChange={(e) => setEdit({ ...edit, color: e.target.value })} style={{ width: 34, height: 30 }} />
+                        <input className="input" style={{ padding: '4px 8px', maxWidth: 200 }} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} />
+                      </div>
+                      <input className="input" style={{ padding: '4px 8px' }} placeholder={t('admin.description')} value={edit.desc} onChange={(e) => setEdit({ ...edit, desc: e.target.value })} />
                     </div>
                   ) : (
-                    <LabelChip label={label} />
+                    <>
+                      <LabelChip label={label} />
+                      {label.description && (
+                        <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{label.description}</div>
+                      )}
+                    </>
                   )}
                 </td>
                 <td className="muted">{t('admin.usageRecords', { n: label.usage_count })}</td>
-                <td className="muted">{formatDate(label.created_at)}</td>
                 <td style={{ textAlign: 'right' }}>
-                  <div className="row-actions">
-                    {editId === label.id ? (
-                      <>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-primary"
-                          onClick={() =>
-                            updateMutation.mutate({ id: label.id, name: editName, color: editColor })
-                          }
-                        >
-                          {t('common.save')}
-                        </button>
-                        <button type="button" className="btn btn-sm" onClick={() => setEditId(null)}>
-                          {t('common.cancel')}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className="btn btn-sm"
-                          onClick={() => {
-                            setEditId(label.id);
-                            setEditName(label.name);
-                            setEditColor(label.color ?? '#33518f');
-                          }}
-                        >
-                          {t('common.edit')}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-danger"
-                          onClick={() => askDelete(label.id, label.name)}
-                        >
-                          {t('common.delete')}
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  {merge?.id === label.id ? (
+                    <div className="row-actions">
+                      <span className="muted" style={{ fontSize: 12 }}>{t('admin.mergeInto')}</span>
+                      <select className="select" style={{ width: 'auto', padding: '4px 8px' }} value={merge.into} onChange={(e) => setMerge({ ...merge, into: e.target.value })}>
+                        <option value="">—</option>
+                        {labels.filter((l) => l.id !== label.id).map((l) => (
+                          <option key={l.id} value={l.id}>{l.name}</option>
+                        ))}
+                      </select>
+                      <button type="button" className="btn btn-sm btn-primary" disabled={!merge.into} onClick={() => mergeMutation.mutate()}>{t('admin.mergeDo')}</button>
+                      <button type="button" className="btn btn-sm" onClick={() => setMerge(null)}>{t('common.cancel')}</button>
+                    </div>
+                  ) : edit?.id === label.id ? (
+                    <div className="row-actions">
+                      <button type="button" className="btn btn-sm btn-primary" onClick={() => updateMutation.mutate()}>{t('common.save')}</button>
+                      <button type="button" className="btn btn-sm" onClick={() => setEdit(null)}>{t('common.cancel')}</button>
+                    </div>
+                  ) : (
+                    <div className="row-actions">
+                      <button type="button" className="btn btn-sm" onClick={() => setEdit({ id: label.id, name: label.name, color: label.color ?? '#33518f', desc: label.description ?? '' })}>{t('common.edit')}</button>
+                      {label.usage_count > 0 && (
+                        <button type="button" className="btn btn-sm" onClick={() => setMerge({ id: label.id, into: '' })}>{t('admin.merge')}</button>
+                      )}
+                      <button type="button" className="btn btn-sm btn-danger" onClick={() => askDelete(label.id, label.name)}>{t('common.delete')}</button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
@@ -566,45 +567,57 @@ function ModulesTab(): JSX.Element {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const modulesQuery = useQuery({ queryKey: ['modules'], queryFn: api.listModules });
+  const modules = modulesQuery.data ?? [];
   const [name, setName] = useState('');
+  const [desc, setDesc] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const invalidate = (): void => void queryClient.invalidateQueries({ queryKey: ['modules'] });
+  const onErr = (err: unknown): void =>
+    setError(err instanceof ApiError ? err.message : t('admin.moduleError'));
 
   const createMutation = useMutation({
-    mutationFn: () => api.createModule(name.trim()),
+    mutationFn: () => api.createModule(name.trim(), desc.trim() || undefined),
     onSuccess: () => {
       setName('');
-      setError(null);
-      void queryClient.invalidateQueries({ queryKey: ['modules'] });
-    },
-    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.moduleError')),
-  });
-
-  const confirm = useConfirm();
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const invalidate = (): void => void queryClient.invalidateQueries({ queryKey: ['modules'] });
-  const updateMutation = useMutation({
-    mutationFn: (input: { id: string; name: string }) => api.updateModule(input.id, input.name),
-    onSuccess: () => {
-      setEditId(null);
+      setDesc('');
       setError(null);
       invalidate();
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.moduleError')),
+    onError: onErr,
+  });
+
+  const confirm = useConfirm();
+  const [edit, setEdit] = useState<{ id: string; name: string; desc: string } | null>(null);
+  const [merge, setMerge] = useState<{ id: string; into: string } | null>(null);
+
+  const updateMutation = useMutation({
+    mutationFn: () => api.updateModule(edit!.id, edit!.name, edit!.desc.trim() || null),
+    onSuccess: () => {
+      setEdit(null);
+      setError(null);
+      invalidate();
+    },
+    onError: onErr,
   });
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.deleteModule(id),
-    onSuccess: invalidate,
-    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.moduleError')),
+    onSuccess: () => {
+      setError(null);
+      invalidate();
+    },
+    onError: onErr,
+  });
+  const mergeMutation = useMutation({
+    mutationFn: () => api.mergeModule(merge!.id, merge!.into),
+    onSuccess: () => {
+      setMerge(null);
+      setError(null);
+      invalidate();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.mergeError')),
   });
   const askDelete = async (id: string, label: string): Promise<void> => {
-    if (
-      await confirm({
-        message: t('common.deleteConfirm', { name: label }),
-        danger: true,
-        confirmLabel: t('common.delete'),
-      })
-    ) {
+    if (await confirm({ message: t('common.deleteConfirm', { name: label }), danger: true, confirmLabel: t('common.delete') })) {
       deleteMutation.mutate(id);
     }
   };
@@ -625,17 +638,24 @@ function ModulesTab(): JSX.Element {
         <div className="row" style={{ gap: 12, flexWrap: 'wrap' }}>
           <input
             className="input"
-            style={{ maxWidth: 300 }}
+            style={{ maxWidth: 240 }}
             placeholder={t('admin.moduleName')}
             value={name}
             onChange={(e) => setName(e.target.value)}
+          />
+          <input
+            className="input"
+            style={{ flex: 1, minWidth: 200 }}
+            placeholder={t('admin.descriptionPlaceholder')}
+            value={desc}
+            onChange={(e) => setDesc(e.target.value)}
           />
           <button type="submit" className="btn btn-primary" disabled={createMutation.isPending}>
             {t('common.add')}
           </button>
         </div>
         <span className="hint" style={{ marginTop: 8, display: 'block' }}>
-          {t('admin.moduleHint')}
+          {t('admin.moduleHint')} {t('admin.mergeHint')}
         </span>
       </form>
 
@@ -645,64 +665,75 @@ function ModulesTab(): JSX.Element {
             <tr>
               <th>{t('admin.colModule')}</th>
               <th>{t('admin.colUsage')}</th>
-              <th>{t('admin.colCreated')}</th>
               <th style={{ textAlign: 'right' }}>{t('admin.colAction')}</th>
             </tr>
           </thead>
           <tbody>
-            {(modulesQuery.data ?? []).map((module) => (
+            {modules.map((module) => (
               <tr key={module.id}>
                 <td>
-                  {editId === module.id ? (
-                    <input
-                      className="input"
-                      style={{ padding: '4px 8px', maxWidth: 220 }}
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                    />
+                  {edit?.id === module.id ? (
+                    <div className="stack" style={{ gap: 6 }}>
+                      <input
+                        className="input"
+                        style={{ padding: '4px 8px', maxWidth: 220 }}
+                        value={edit.name}
+                        onChange={(e) => setEdit({ ...edit, name: e.target.value })}
+                      />
+                      <input
+                        className="input"
+                        style={{ padding: '4px 8px' }}
+                        placeholder={t('admin.description')}
+                        value={edit.desc}
+                        onChange={(e) => setEdit({ ...edit, desc: e.target.value })}
+                      />
+                    </div>
                   ) : (
-                    <span className="chip">{module.name}</span>
+                    <>
+                      <span className="chip">{module.name}</span>
+                      {module.description && (
+                        <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>
+                          {module.description}
+                        </div>
+                      )}
+                    </>
                   )}
                 </td>
                 <td className="muted">{t('admin.usageRecords', { n: module.usage_count })}</td>
-                <td className="muted">{formatDate(module.created_at)}</td>
                 <td style={{ textAlign: 'right' }}>
-                  <div className="row-actions">
-                    {editId === module.id ? (
-                      <>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-primary"
-                          onClick={() => updateMutation.mutate({ id: module.id, name: editName })}
-                        >
-                          {t('common.save')}
-                        </button>
-                        <button type="button" className="btn btn-sm" onClick={() => setEditId(null)}>
-                          {t('common.cancel')}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button
-                          type="button"
-                          className="btn btn-sm"
-                          onClick={() => {
-                            setEditId(module.id);
-                            setEditName(module.name);
-                          }}
-                        >
-                          {t('common.edit')}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-danger"
-                          onClick={() => askDelete(module.id, module.name)}
-                        >
-                          {t('common.delete')}
-                        </button>
-                      </>
-                    )}
-                  </div>
+                  {merge?.id === module.id ? (
+                    <div className="row-actions">
+                      <span className="muted" style={{ fontSize: 12 }}>{t('admin.mergeInto')}</span>
+                      <select
+                        className="select"
+                        style={{ width: 'auto', padding: '4px 8px' }}
+                        value={merge.into}
+                        onChange={(e) => setMerge({ ...merge, into: e.target.value })}
+                      >
+                        <option value="">—</option>
+                        {modules.filter((m) => m.id !== module.id).map((m) => (
+                          <option key={m.id} value={m.id}>{m.name}</option>
+                        ))}
+                      </select>
+                      <button type="button" className="btn btn-sm btn-primary" disabled={!merge.into} onClick={() => mergeMutation.mutate()}>
+                        {t('admin.mergeDo')}
+                      </button>
+                      <button type="button" className="btn btn-sm" onClick={() => setMerge(null)}>{t('common.cancel')}</button>
+                    </div>
+                  ) : edit?.id === module.id ? (
+                    <div className="row-actions">
+                      <button type="button" className="btn btn-sm btn-primary" onClick={() => updateMutation.mutate()}>{t('common.save')}</button>
+                      <button type="button" className="btn btn-sm" onClick={() => setEdit(null)}>{t('common.cancel')}</button>
+                    </div>
+                  ) : (
+                    <div className="row-actions">
+                      <button type="button" className="btn btn-sm" onClick={() => setEdit({ id: module.id, name: module.name, desc: module.description ?? '' })}>{t('common.edit')}</button>
+                      {module.usage_count > 0 && (
+                        <button type="button" className="btn btn-sm" onClick={() => setMerge({ id: module.id, into: '' })}>{t('admin.merge')}</button>
+                      )}
+                      <button type="button" className="btn btn-sm btn-danger" onClick={() => askDelete(module.id, module.name)}>{t('common.delete')}</button>
+                    </div>
+                  )}
                 </td>
               </tr>
             ))}
@@ -717,31 +748,38 @@ function LinkTypesTab(): JSX.Element {
   const { t } = useI18n();
   const queryClient = useQueryClient();
   const typesQuery = useQuery({ queryKey: ['link-types'], queryFn: api.listLinkTypes });
+  const types = typesQuery.data ?? [];
   const [form, setForm] = useState({
     forwardName: '',
     inverseName: '',
     color: '#33518f',
     isSupersede: false,
+    description: '',
   });
   const [error, setError] = useState<string | null>(null);
 
   const invalidate = (): void => {
     void queryClient.invalidateQueries({ queryKey: ['link-types'] });
   };
+  const onErr = (err: unknown): void =>
+    setError(err instanceof ApiError ? err.message : t('admin.linkTypeError'));
 
   const createMutation = useMutation({
     mutationFn: () => api.createLinkType(form),
     onSuccess: () => {
-      setForm({ forwardName: '', inverseName: '', color: '#33518f', isSupersede: false });
+      setForm({ forwardName: '', inverseName: '', color: '#33518f', isSupersede: false, description: '' });
       setError(null);
       invalidate();
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.linkTypeError')),
+    onError: onErr,
   });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => api.deleteLinkType(id),
-    onSuccess: invalidate,
+    onSuccess: () => {
+      setError(null);
+      invalidate();
+    },
     onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.deleteError')),
   });
 
@@ -752,6 +790,7 @@ function LinkTypesTab(): JSX.Element {
     inverseName: '',
     color: '#33518f',
     isSupersede: false,
+    description: '',
   });
   const updateMutation = useMutation({
     mutationFn: (id: string) => api.updateLinkType(id, editForm),
@@ -760,7 +799,17 @@ function LinkTypesTab(): JSX.Element {
       setError(null);
       invalidate();
     },
-    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.linkTypeError')),
+    onError: onErr,
+  });
+  const [merge, setMerge] = useState<{ id: string; into: string } | null>(null);
+  const mergeMutation = useMutation({
+    mutationFn: () => api.mergeLinkType(merge!.id, merge!.into),
+    onSuccess: () => {
+      setMerge(null);
+      setError(null);
+      invalidate();
+    },
+    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.mergeError')),
   });
   const askDelete = async (id: string, label: string): Promise<void> => {
     if (
@@ -807,6 +856,15 @@ function LinkTypesTab(): JSX.Element {
             />
           </div>
         </div>
+        <div className="field" style={{ marginBottom: 14 }}>
+          <label>{t('admin.description')}</label>
+          <input
+            className="input"
+            placeholder={t('admin.descriptionPlaceholder')}
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+          />
+        </div>
         <div className="row" style={{ gap: 20, flexWrap: 'wrap' }}>
           <label className="filter-check">
             <input
@@ -829,6 +887,7 @@ function LinkTypesTab(): JSX.Element {
             {t('common.add')}
           </button>
         </div>
+        <span className="hint" style={{ marginTop: 8, display: 'block' }}>{t('admin.mergeHint')}</span>
       </form>
 
       <div className="card" style={{ padding: 0, overflowX: 'auto' }}>
@@ -842,31 +901,43 @@ function LinkTypesTab(): JSX.Element {
             </tr>
           </thead>
           <tbody>
-            {(typesQuery.data ?? []).map((type) => {
+            {types.map((type) => {
               const editing = editId === type.id;
               return (
                 <tr key={type.id}>
                   <td>
                     {editing ? (
-                      <div className="row" style={{ gap: 6 }}>
+                      <div className="stack" style={{ gap: 6 }}>
+                        <div className="row" style={{ gap: 6 }}>
+                          <input
+                            className="input"
+                            style={{ padding: '4px 8px', maxWidth: 110 }}
+                            value={editForm.forwardName}
+                            onChange={(e) => setEditForm({ ...editForm, forwardName: e.target.value })}
+                          />
+                          <span className="muted">→</span>
+                          <input
+                            className="input"
+                            style={{ padding: '4px 8px', maxWidth: 110 }}
+                            value={editForm.inverseName}
+                            onChange={(e) => setEditForm({ ...editForm, inverseName: e.target.value })}
+                          />
+                        </div>
                         <input
                           className="input"
-                          style={{ padding: '4px 8px', maxWidth: 110 }}
-                          value={editForm.forwardName}
-                          onChange={(e) => setEditForm({ ...editForm, forwardName: e.target.value })}
-                        />
-                        <span className="muted">→</span>
-                        <input
-                          className="input"
-                          style={{ padding: '4px 8px', maxWidth: 110 }}
-                          value={editForm.inverseName}
-                          onChange={(e) => setEditForm({ ...editForm, inverseName: e.target.value })}
+                          style={{ padding: '4px 8px' }}
+                          placeholder={t('admin.description')}
+                          value={editForm.description}
+                          onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
                         />
                       </div>
                     ) : (
                       <>
                         <strong>{type.forward_name}</strong>{' '}
                         <span className="muted">→ {type.inverse_name}</span>
+                        {type.description && (
+                          <div className="muted" style={{ fontSize: 12, marginTop: 3 }}>{type.description}</div>
+                        )}
                       </>
                     )}
                   </td>
@@ -905,47 +976,45 @@ function LinkTypesTab(): JSX.Element {
                     )}
                   </td>
                   <td style={{ textAlign: 'right' }}>
-                    <div className="row-actions">
-                      {editing ? (
-                        <>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-primary"
-                            onClick={() => updateMutation.mutate(type.id)}
-                          >
-                            {t('common.save')}
-                          </button>
-                          <button type="button" className="btn btn-sm" onClick={() => setEditId(null)}>
-                            {t('common.cancel')}
-                          </button>
-                        </>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            className="btn btn-sm"
-                            onClick={() => {
-                              setEditId(type.id);
-                              setEditForm({
-                                forwardName: type.forward_name,
-                                inverseName: type.inverse_name,
-                                color: type.color ?? '#33518f',
-                                isSupersede: type.is_supersede,
-                              });
-                            }}
-                          >
-                            {t('common.edit')}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-danger"
-                            onClick={() => askDelete(type.id, type.forward_name)}
-                          >
-                            {t('common.delete')}
-                          </button>
-                        </>
-                      )}
-                    </div>
+                    {merge?.id === type.id ? (
+                      <div className="row-actions">
+                        <span className="muted" style={{ fontSize: 12 }}>{t('admin.mergeInto')}</span>
+                        <select className="select" style={{ width: 'auto', padding: '4px 8px' }} value={merge.into} onChange={(e) => setMerge({ ...merge, into: e.target.value })}>
+                          <option value="">—</option>
+                          {types.filter((x) => x.id !== type.id).map((x) => (
+                            <option key={x.id} value={x.id}>{x.forward_name}</option>
+                          ))}
+                        </select>
+                        <button type="button" className="btn btn-sm btn-primary" disabled={!merge.into} onClick={() => mergeMutation.mutate()}>{t('admin.mergeDo')}</button>
+                        <button type="button" className="btn btn-sm" onClick={() => setMerge(null)}>{t('common.cancel')}</button>
+                      </div>
+                    ) : editing ? (
+                      <div className="row-actions">
+                        <button type="button" className="btn btn-sm btn-primary" onClick={() => updateMutation.mutate(type.id)}>{t('common.save')}</button>
+                        <button type="button" className="btn btn-sm" onClick={() => setEditId(null)}>{t('common.cancel')}</button>
+                      </div>
+                    ) : (
+                      <div className="row-actions">
+                        <button
+                          type="button"
+                          className="btn btn-sm"
+                          onClick={() => {
+                            setEditId(type.id);
+                            setEditForm({
+                              forwardName: type.forward_name,
+                              inverseName: type.inverse_name,
+                              color: type.color ?? '#33518f',
+                              isSupersede: type.is_supersede,
+                              description: type.description ?? '',
+                            });
+                          }}
+                        >
+                          {t('common.edit')}
+                        </button>
+                        <button type="button" className="btn btn-sm" onClick={() => setMerge({ id: type.id, into: '' })}>{t('admin.merge')}</button>
+                        <button type="button" className="btn btn-sm btn-danger" onClick={() => askDelete(type.id, type.forward_name)}>{t('common.delete')}</button>
+                      </div>
+                    )}
                   </td>
                 </tr>
               );
