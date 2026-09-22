@@ -9,6 +9,8 @@ FROM node:26-alpine AS web-build
 WORKDIR /app/apps/web
 COPY apps/web/package*.json ./
 RUN npm install
+# web/tsconfig.json ../../tsconfig.base.json'ı extend eder; onu da getir.
+COPY tsconfig.base.json /app/tsconfig.base.json
 COPY apps/web/ ./
 # Tek image'da web, API ile aynı origin'den servis edildiği için API_URL boş
 # bırakılır (göreli /api yolları kullanılır).
