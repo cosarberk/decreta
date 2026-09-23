@@ -2,7 +2,7 @@ apiVersion: v2
 name: decreta
 description: Analiz, test ve kodu etkileyen kararların değiştirilemez kaydı (tek image)
 type: application
-version: 0.1.5
+version: 0.1.6
 appVersion: "latest"
 home: https://github.com/cosarberk/decreta
 sources:
