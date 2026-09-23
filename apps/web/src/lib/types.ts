@@ -147,6 +147,7 @@ export interface PublicUser {
   full_name: string;
   role: Role;
   is_active: boolean;
+  available_as_person: boolean;
   created_at: string;
   updated_at: string;
 }

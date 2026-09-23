@@ -163,6 +163,11 @@ export const api = {
     return rows.map((row) => ({ id: row.id, fullName: row.full_name }));
   },
 
+  /** Karar veren/şahit önerisi: mevcut kişiler + bulunabilir kullanıcılar birleşimi. */
+  searchPersonSuggestions(query: string): Promise<string[]> {
+    return apiRequest<string[]>('/persons/suggest', { query: { q: query, limit: 20 } });
+  },
+
   updateProfile(fullName: string): Promise<PublicUser> {
     return apiRequest<PublicUser>('/auth/me', { method: 'PATCH', body: { fullName } });
   },
@@ -193,6 +198,13 @@ export const api = {
 
   setUserRole(id: string, role: Role): Promise<PublicUser> {
     return apiRequest<PublicUser>(`/users/${id}/role`, { method: 'PATCH', body: { role } });
+  },
+
+  setUserAvailability(id: string, available: boolean): Promise<PublicUser> {
+    return apiRequest<PublicUser>(`/users/${id}/availability`, {
+      method: 'PATCH',
+      body: { available },
+    });
   },
 
   updateUser(id: string, fullName: string, email: string): Promise<PublicUser> {

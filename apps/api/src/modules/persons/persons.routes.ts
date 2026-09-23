@@ -12,6 +12,12 @@ export async function personsRoutes(app: FastifyInstance): Promise<void> {
     return personsService.search(q, limit);
   });
 
+  // Karar veren/şahit önerisi: persons ∪ bulunabilirliği açık kullanıcılar.
+  app.get('/persons/suggest', { preHandler: app.authenticate }, async (request) => {
+    const { q, limit } = searchPersonsSchema.parse(request.query);
+    return personsService.searchSuggestions(q, limit);
+  });
+
   app.post('/persons', { preHandler: app.authenticate }, async (request, reply) => {
     const { fullName } = createPersonSchema.parse(request.body);
     const person = await personsService.create(fullName);

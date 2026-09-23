@@ -195,7 +195,7 @@ export function NewRecordPage(): JSX.Element {
               values={deciders}
               onChange={setDeciders}
               placeholder={t('newRecord.personPlaceholder')}
-              fetchSuggestions={api.searchPersons}
+              fetchSuggestions={api.searchPersonSuggestions}
             />
           </div>
 
@@ -205,7 +205,7 @@ export function NewRecordPage(): JSX.Element {
               values={witnesses}
               onChange={setWitnesses}
               placeholder={t('newRecord.personPlaceholder')}
-              fetchSuggestions={api.searchPersons}
+              fetchSuggestions={api.searchPersonSuggestions}
             />
           </div>
 

@@ -56,6 +56,17 @@ export const usersService = {
     return user;
   },
 
+  /**
+   * "Bulunabilirlik" bayrağını değiştirir. Açıkken kullanıcı, kayıt formundaki
+   * karar veren/şahit önerilerinde persons ile birlikte listelenir. persons
+   * tablosuna kopya yazılmaz; öneri birleşimde hesaplanır (FK/silme derdi yok).
+   */
+  async setAvailability(id: string, value: boolean): Promise<PublicUser> {
+    const user = await usersRepository.setAvailableAsPerson(id, value);
+    if (!user) throw AppError.notFound('Kullanıcı bulunamadı');
+    return user;
+  },
+
   /** Admin bir kullanıcının adını günceller. */
   async updateName(id: string, fullName: string): Promise<PublicUser> {
     const trimmed = fullName.trim();

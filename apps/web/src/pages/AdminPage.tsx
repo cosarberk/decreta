@@ -87,6 +87,13 @@ function UsersTab(): JSX.Element {
     onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.actionError')),
   });
 
+  const availabilityMutation = useMutation({
+    mutationFn: (input: { id: string; available: boolean }) =>
+      api.setUserAvailability(input.id, input.available),
+    onSuccess: invalidate,
+    onError: (err) => setError(err instanceof ApiError ? err.message : t('admin.actionError')),
+  });
+
   const users = usersQuery.data ?? [];
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [mailMsg, setMailMsg] = useState<string | null>(null);
@@ -285,6 +292,9 @@ function UsersTab(): JSX.Element {
               <th>{t('admin.email')}</th>
               <th>{t('admin.role')}</th>
               <th>{t('admin.colStatus')}</th>
+              <th style={{ textAlign: 'center' }} title={t('admin.availableTooltip')}>
+                {t('admin.colAvailable')}
+              </th>
               <th style={{ textAlign: 'right' }}>{t('admin.colAction')}</th>
             </tr>
           </thead>
@@ -318,6 +328,19 @@ function UsersTab(): JSX.Element {
                   ) : (
                     <span className="badge-affect badge-superseded">{t('admin.passive')}</span>
                   )}
+                </td>
+                <td style={{ textAlign: 'center' }}>
+                  <label className="switch" title={t('admin.availableTooltip')}>
+                    <input
+                      type="checkbox"
+                      checked={user.available_as_person}
+                      onChange={(e) =>
+                        availabilityMutation.mutate({ id: user.id, available: e.target.checked })
+                      }
+                      aria-label={t('admin.availableTooltip')}
+                    />
+                    <span className="switch-slider" />
+                  </label>
                 </td>
                 <td style={{ textAlign: 'right' }}>
                   <div className="row-actions">

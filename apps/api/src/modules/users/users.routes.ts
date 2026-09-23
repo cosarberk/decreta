@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
   createUserSchema,
   setActiveSchema,
+  setAvailabilitySchema,
   setRoleSchema,
   userIdParamsSchema,
 } from './users.schema.js';
@@ -86,6 +87,20 @@ export async function usersRoutes(app: FastifyInstance): Promise<void> {
       actorId: request.user.sub,
       actorName: request.user.fullName,
       targetRef: user.full_name,
+    });
+    return user;
+  });
+
+  app.patch('/users/:id/availability', { preHandler: app.requireAdmin }, async (request) => {
+    const { id } = userIdParamsSchema.parse(request.params);
+    const { available } = setAvailabilitySchema.parse(request.body);
+    const user = await usersService.setAvailability(id, available);
+    void activityService.log({
+      action: 'user_updated',
+      actorId: request.user.sub,
+      actorName: request.user.fullName,
+      targetRef: user.full_name,
+      targetText: available ? 'bulunabilirlik açıldı' : 'bulunabilirlik kapatıldı',
     });
     return user;
   });

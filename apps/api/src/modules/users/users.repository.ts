@@ -8,6 +8,7 @@ export interface UserRow {
   full_name: string;
   role: 'admin' | 'user';
   is_active: boolean;
+  available_as_person: boolean;
   created_at: string;
   updated_at: string;
 }
@@ -16,7 +17,7 @@ export interface UserRow {
 export type PublicUser = Omit<UserRow, 'password_hash'>;
 
 const PUBLIC_COLUMNS =
-  'id, email, full_name, role, is_active, created_at, updated_at';
+  'id, email, full_name, role, is_active, available_as_person, created_at, updated_at';
 
 export const usersRepository = {
   async findByEmail(email: string): Promise<UserRow | null> {
@@ -122,6 +123,41 @@ export const usersRepository = {
       [id, role],
     );
     return rows[0] ?? null;
+  },
+
+  /** "Bulunabilirlik" bayrağını değiştirir (karar veren/şahit önerisinde çıkma). */
+  async setAvailableAsPerson(id: string, value: boolean): Promise<PublicUser | null> {
+    const rows = await query<PublicUser>(
+      `UPDATE users SET available_as_person = $2, updated_at = now()
+       WHERE id = $1 RETURNING ${PUBLIC_COLUMNS}`,
+      [id, value],
+    );
+    return rows[0] ?? null;
+  },
+
+  /**
+   * Karar veren/şahit önerisi için: bulunabilirliği açık aktif kullanıcıların
+   * isimleri. Boş terim tümünü döndürür; aksi halde isimde (ILIKE) arar.
+   */
+  async searchAvailableNames(term: string, limit: number): Promise<string[]> {
+    const trimmed = term.trim();
+    if (trimmed.length === 0) {
+      const rows = await query<{ full_name: string }>(
+        `SELECT full_name FROM users
+         WHERE is_active = true AND available_as_person = true
+         ORDER BY full_name ASC LIMIT $1`,
+        [limit],
+      );
+      return rows.map((row) => row.full_name);
+    }
+    const rows = await query<{ full_name: string }>(
+      `SELECT full_name FROM users
+       WHERE is_active = true AND available_as_person = true
+         AND full_name ILIKE '%' || $1 || '%'
+       ORDER BY full_name ASC LIMIT $2`,
+      [trimmed, limit],
+    );
+    return rows.map((row) => row.full_name);
   },
 
   async countAdmins(): Promise<number> {

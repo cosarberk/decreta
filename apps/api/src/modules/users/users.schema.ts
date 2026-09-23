@@ -15,6 +15,10 @@ export const setRoleSchema = z.object({
   role: z.enum(['admin', 'user']),
 });
 
+export const setAvailabilitySchema = z.object({
+  available: z.boolean(),
+});
+
 export const userIdParamsSchema = z.object({
   id: z.string().uuid('Geçersiz kullanıcı kimliği'),
 });
