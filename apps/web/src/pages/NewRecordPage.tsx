@@ -7,6 +7,8 @@ import { AFFECTS, type Affect } from '../lib/types';
 import { TokenInput } from '../components/TokenInput';
 import { LinkComposer, type AddLinkPayload } from '../components/LinkComposer';
 import { RecordSidePanel } from '../components/RecordSidePanel';
+import { AffectBadge } from '../components/atoms';
+import { useConfirm } from '../components/ConfirmProvider';
 import { useI18n } from '../i18n/I18nContext';
 import { formatRefNo } from '../lib/format';
 
@@ -21,6 +23,7 @@ export function NewRecordPage(): JSX.Element {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { t } = useI18n();
+  const confirm = useConfirm();
   const [searchParams] = useSearchParams();
   const initialSupersedesId = searchParams.get('supersedes');
 
@@ -34,6 +37,7 @@ export function NewRecordPage(): JSX.Element {
   const [links, setLinks] = useState<StagedLink[]>([]);
   const [panelId, setPanelId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const linkTypesQuery = useQuery({ queryKey: ['link-types'], queryFn: api.listLinkTypes });
 
@@ -111,6 +115,7 @@ export function NewRecordPage(): JSX.Element {
     [],
   );
 
+  // "Kaydı oluştur" artık doğrudan kaydetmez; önce salt-okunur önizlemeyi açar.
   const handleSubmit = (event: FormEvent): void => {
     event.preventDefault();
     setError(null);
@@ -118,7 +123,18 @@ export function NewRecordPage(): JSX.Element {
       setError(t('newRecord.validation'));
       return;
     }
-    mutation.mutate();
+    setShowPreview(true);
+  };
+
+  // Önizlemedeki "Kaydet": geri alınamazlık uyarısı onaylanırsa kaydı oluşturur.
+  const handleConfirmedSave = async (): Promise<void> => {
+    const ok = await confirm({
+      title: t('newRecord.confirmTitle'),
+      message: t('newRecord.confirmMessage'),
+      confirmLabel: t('newRecord.confirmSave'),
+      danger: true,
+    });
+    if (ok) mutation.mutate();
   };
 
   return (
@@ -272,6 +288,128 @@ export function NewRecordPage(): JSX.Element {
         </div>
         </form>
       </div>
+
+      {showPreview && (
+        <>
+          <div className="side-overlay" onClick={() => setShowPreview(false)} />
+          <div
+            className="preview-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={t('newRecord.preview')}
+          >
+            <div className="preview-title">{t('newRecord.preview')}</div>
+            <p className="preview-hint">{t('newRecord.previewHint')}</p>
+
+            {error && <div className="form-error">{error}</div>}
+
+            <div className="preview-item">
+              <div className="preview-item-label">{t('newRecord.decision')}</div>
+              <div className="preview-item-value">{decision}</div>
+            </div>
+
+            <div className="preview-item">
+              <div className="preview-item-label">{t('newRecord.rationale')}</div>
+              <div className="preview-item-value">{rationale}</div>
+            </div>
+
+            <div className="preview-item">
+              <div className="preview-item-label">{t('newRecord.affects')}</div>
+              <div className="preview-chips">
+                {affects.map((a) => (
+                  <AffectBadge key={a} affect={a} />
+                ))}
+              </div>
+            </div>
+
+            {modules.length > 0 && (
+              <div className="preview-item">
+                <div className="preview-item-label">{t('newRecord.modules')}</div>
+                <div className="preview-chips">
+                  {modules.map((m) => (
+                    <span key={m} className="chip">
+                      {m}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="preview-item">
+              <div className="preview-item-label">{t('newRecord.deciders')}</div>
+              {deciders.length > 0 ? (
+                <div className="preview-chips">
+                  {deciders.map((d) => (
+                    <span key={d} className="chip">
+                      {d}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <div className="preview-item-value preview-empty">{t('newRecord.empty')}</div>
+              )}
+            </div>
+
+            {witnesses.length > 0 && (
+              <div className="preview-item">
+                <div className="preview-item-label">{t('newRecord.witnesses')}</div>
+                <div className="preview-chips">
+                  {witnesses.map((w) => (
+                    <span key={w} className="chip">
+                      {w}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {labels.length > 0 && (
+              <div className="preview-item">
+                <div className="preview-item-label">{t('newRecord.labels')}</div>
+                <div className="preview-chips">
+                  {labels.map((l) => (
+                    <span key={l} className="chip">
+                      {l}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {links.length > 0 && (
+              <div className="preview-item">
+                <div className="preview-item-label">{t('newRecord.links')}</div>
+                <div className="preview-chips">
+                  {links.map((l) => (
+                    <span key={`${l.toRecordId}-${l.linkTypeId}`} className="chip">
+                      {l.typeLabel}: {l.recordLabel}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="preview-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => setShowPreview(false)}
+                disabled={mutation.isPending}
+              >
+                {t('newRecord.backToEdit')}
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleConfirmedSave}
+                disabled={mutation.isPending}
+              >
+                {mutation.isPending ? t('newRecord.submitting') : t('newRecord.save')}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       <RecordSidePanel recordId={panelId} onClose={() => setPanelId(null)} />
     </>
