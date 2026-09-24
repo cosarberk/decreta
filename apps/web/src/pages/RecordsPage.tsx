@@ -297,17 +297,32 @@ function RecordRow({ record }: { record: RecordSummary }): JSX.Element {
             <AffectBadge key={affect} affect={affect} />
           ))}
         </span>
+        <span className="record-card-date">{formatDate(record.createdAt)}</span>
       </div>
       <div className="record-card-decision">{record.decision}</div>
       <div className="record-card-rationale">{record.rationale}</div>
       <div className="record-card-meta">
-        <span>{record.createdBy.fullName}</span>
-        <span className="dot" />
-        <span>{formatDate(record.createdAt)}</span>
+        <span className="meta-hover">
+          <span className="meta-hover-trigger">{t('records.createdBy')}</span>
+          <span className="meta-popover" role="tooltip">
+            {record.createdBy.fullName}
+          </span>
+        </span>
         {record.deciders.length > 0 && (
           <>
             <span className="dot" />
-            <span>{t('records.decidersCount', { n: record.deciders.length })}</span>
+            <span className="meta-hover">
+              <span className="meta-hover-trigger">
+                {t('records.decidersCount', { n: record.deciders.length })}
+              </span>
+              <span className="meta-popover" role="tooltip">
+                <ul className="meta-popover-list">
+                  {record.deciders.map((p) => (
+                    <li key={p.id}>{p.fullName}</li>
+                  ))}
+                </ul>
+              </span>
+            </span>
           </>
         )}
         {record.labels.length > 0 && (
