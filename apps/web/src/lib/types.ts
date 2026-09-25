@@ -96,6 +96,14 @@ export interface LinkType {
   created_at: string;
 }
 
+/** Mail gönderiminde kişi başı sonuç (mail_sent olaylarında dolu gelir). */
+export interface MailRecipientResult {
+  email: string;
+  name: string;
+  ok: boolean;
+  error?: string;
+}
+
 export interface ActivityItem {
   id: string;
   action: string;
@@ -103,6 +111,7 @@ export interface ActivityItem {
   target_ref: string | null;
   target_text: string | null;
   record_id: string | null;
+  details: MailRecipientResult[] | null;
   created_at: string;
 }
 

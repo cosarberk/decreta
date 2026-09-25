@@ -6,13 +6,14 @@ import type { ActivityItem } from '../lib/types';
 import { useI18n } from '../i18n/I18nContext';
 import { formatDateTime } from '../lib/format';
 
-type Category = 'create' | 'update' | 'delete' | 'link' | 'supersede';
+type Category = 'create' | 'update' | 'delete' | 'link' | 'supersede' | 'mail';
 
 const CATEGORY: Record<string, Category> = {
   record_created: 'create',
   record_superseded: 'supersede',
   link_added: 'link',
   link_removed: 'delete',
+  mail_sent: 'mail',
   label_created: 'create',
   label_updated: 'update',
   label_deleted: 'delete',
@@ -115,7 +116,7 @@ export function ActivityPage(): JSX.Element {
           <option value="">{t('activity.allActions')}</option>
           {(actionsQuery.data ?? []).map((a) => (
             <option key={a} value={a}>
-              {a.replace(/_/g, ' ')}
+              {a === 'mail_sent' ? t('activity.mailFilter') : a.replace(/_/g, ' ')}
             </option>
           ))}
         </select>
@@ -182,25 +183,54 @@ function LogRow({
   onOpen: (to: string) => void;
 }): JSX.Element {
   const { t } = useI18n();
+  const [expanded, setExpanded] = useState(false);
   const cat = CATEGORY[item.action] ?? 'update';
   const sentence = t(`activity.action.${item.action}`, { actor: item.actor_name });
   const label = sentence.startsWith('activity.action.')
     ? t('activity.action.unknown', { actor: item.actor_name })
     : sentence;
-  const clickable = Boolean(item.record_id);
+
+  // Mail satırı: tıklayınca kayda gitmez, kişi başı sonucu açıp kapar.
+  const isMail = item.action === 'mail_sent';
+  const recipients = item.details ?? [];
+  const hasRecipients = isMail && recipients.length > 0;
+  const clickable = hasRecipients || Boolean(item.record_id);
+
+  const handleClick = (): void => {
+    if (hasRecipients) setExpanded((v) => !v);
+    else if (item.record_id) onOpen(`/records/${item.record_id}`);
+  };
 
   return (
-    <div
-      className={`log-row${clickable ? ' clickable' : ''}`}
-      onClick={clickable ? () => onOpen(`/records/${item.record_id}`) : undefined}
-    >
-      <span className="log-time">{formatDateTime(item.created_at)}</span>
-      <span className={`log-tag log-cat-${cat}`}>{t(`activity.cat.${cat}`)}</span>
-      <span className="log-text">
-        {label}
-        {item.target_ref && <span className="log-ref">{item.target_ref}</span>}
-        {item.target_text && <span className="log-detail">{item.target_text}</span>}
-      </span>
-    </div>
+    <>
+      <div
+        className={`log-row${clickable ? ' clickable' : ''}`}
+        onClick={clickable ? handleClick : undefined}
+      >
+        <span className="log-time">{formatDateTime(item.created_at)}</span>
+        <span className={`log-tag log-cat-${cat}`}>{t(`activity.cat.${cat}`)}</span>
+        <span className="log-text">
+          {label}
+          {item.target_ref && <span className="log-ref">{item.target_ref}</span>}
+          {item.target_text && <span className="log-detail">{item.target_text}</span>}
+          {hasRecipients && <span className="log-caret">{expanded ? '▾' : '▸'}</span>}
+        </span>
+      </div>
+      {hasRecipients && expanded && (
+        <ul className="mail-recipients">
+          {recipients.map((r, i) => (
+            <li key={`${r.email}-${i}`} className={`mail-recipient ${r.ok ? 'ok' : 'fail'}`}>
+              <span className="mail-recipient-status">{r.ok ? '✓' : '✗'}</span>
+              <span className="mail-recipient-name">{r.name}</span>
+              <span className="mail-recipient-email">{r.email}</span>
+              <span className="mail-recipient-state">
+                {r.ok ? t('activity.mailOk') : t('activity.mailFail')}
+                {!r.ok && r.error ? ` — ${r.error}` : ''}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </>
   );
 }
