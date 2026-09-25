@@ -1,4 +1,9 @@
-import { activityRepository, type ActivityFilters, type ActivityRow } from './activity.repository.js';
+import {
+  activityRepository,
+  type ActivityFilters,
+  type ActivityRow,
+  type MailRecipientResult,
+} from './activity.repository.js';
 
 /** Kaydın açıldığı olay tipleri (frontend'de renk/çeviri için sabit anahtarlar). */
 export type ActivityAction =
@@ -20,7 +25,8 @@ export type ActivityAction =
   | 'user_deleted'
   | 'user_activated'
   | 'user_deactivated'
-  | 'user_role_changed';
+  | 'user_role_changed'
+  | 'mail_sent';
 
 export interface LogEntry {
   action: ActivityAction;
@@ -29,6 +35,7 @@ export interface LogEntry {
   targetRef?: string | null;
   targetText?: string | null;
   recordId?: string | null;
+  details?: MailRecipientResult[] | null;
 }
 
 function csvCell(value: unknown): string {
@@ -47,6 +54,7 @@ export const activityService = {
         targetRef: entry.targetRef ?? null,
         targetText: entry.targetText ?? null,
         recordId: entry.recordId ?? null,
+        details: entry.details ?? null,
       });
     } catch (error) {
       console.error('[activity] kaydedilemedi:', (error as Error).message);

@@ -1,5 +1,13 @@
 import { query } from '../../db/index.js';
 
+/** Mail gönderiminde kişi başı sonuç (details JSON içinde saklanır). */
+export interface MailRecipientResult {
+  email: string;
+  name: string;
+  ok: boolean;
+  error?: string;
+}
+
 export interface ActivityRow {
   id: string;
   action: string;
@@ -8,6 +16,7 @@ export interface ActivityRow {
   target_ref: string | null;
   target_text: string | null;
   record_id: string | null;
+  details: MailRecipientResult[] | null;
   created_at: string;
 }
 
@@ -46,11 +55,20 @@ export const activityRepository = {
     targetRef: string | null;
     targetText: string | null;
     recordId: string | null;
+    details: MailRecipientResult[] | null;
   }): Promise<void> {
     await query(
-      `INSERT INTO activity_log (action, actor_id, actor_name, target_ref, target_text, record_id)
-       VALUES ($1, $2, $3, $4, $5, $6)`,
-      [entry.action, entry.actorId, entry.actorName, entry.targetRef, entry.targetText, entry.recordId],
+      `INSERT INTO activity_log (action, actor_id, actor_name, target_ref, target_text, record_id, details)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+      [
+        entry.action,
+        entry.actorId,
+        entry.actorName,
+        entry.targetRef,
+        entry.targetText,
+        entry.recordId,
+        entry.details ? JSON.stringify(entry.details) : null,
+      ],
     );
   },
 

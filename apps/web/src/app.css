@@ -843,6 +843,60 @@ a.topbar-user:hover {
   color: var(--danger);
   background: color-mix(in srgb, var(--danger) 16%, var(--surface));
 }
+.log-cat-mail {
+  color: var(--warn);
+  background: color-mix(in srgb, var(--warn) 14%, var(--surface));
+}
+.log-caret {
+  color: var(--ink-faint);
+  font-size: 11px;
+}
+
+/* Mail satırı açıldığında kişi başı sonuç listesi */
+.mail-recipients {
+  list-style: none;
+  margin: 0;
+  padding: 6px 16px 12px 40px;
+  border-bottom: 1px solid var(--line);
+  background: var(--surface-2);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mail-recipient {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 13px;
+  flex-wrap: wrap;
+}
+.mail-recipient-status {
+  font-weight: 700;
+  width: 14px;
+  flex-shrink: 0;
+}
+.mail-recipient.ok .mail-recipient-status {
+  color: var(--ok);
+}
+.mail-recipient.fail .mail-recipient-status {
+  color: var(--danger);
+}
+.mail-recipient-name {
+  color: var(--ink);
+  font-weight: 500;
+}
+.mail-recipient-email {
+  color: var(--ink-soft);
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+.mail-recipient-state {
+  color: var(--ink-faint);
+  font-size: 12px;
+}
+.mail-recipient.fail .mail-recipient-state {
+  color: var(--danger);
+}
 .log-text {
   color: var(--ink);
   min-width: 0;
